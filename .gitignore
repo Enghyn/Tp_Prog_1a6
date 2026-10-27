@@ -1,0 +1,76 @@
+# Entornos
+.env
+.env.*
+!.env.example
+
+# Entornos virtuales
+.venv/
+venv/
+env/
+ENV/
+
+# Caché de Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Distribución / build
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.nox/
+
+# Mypy
+.mypy_cache/
+
+# Ruff / Lint
+.ruff_cache/
+
+# Pyright / type checkers
+.pyright_cache/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Logs
+*.log
+logs/
+
+# OS
+.DS_Store
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Editores
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+.idea/
+*.swp
+*.swo
+*~
+
+# Alembic
+# Las migraciones SÍ se versionan; ignorar solo artefactos locales si existen
+alembic/versions/__pycache__/
+
+# FastAPI / Uvicorn
+instance/
+
+# Herramientas locales
+.tmp/
+.cache/
+tmp/
+
+# Skills lock / state local (NO ignorar .agents/, .atl/ porque ya están en el repo)
+# .active-orchestrator-state.json ya está trackeado
+# skills-lock.json ya está trackeado

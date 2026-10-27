@@ -1,0 +1,191 @@
+{
+  "version": 4,
+  "step": "done",
+  "owner": "active-orchestrator",
+  "registry": {
+    "created_by": "skill-registry",
+    "file": ".atl/skill-registry.md"
+  },
+  "agents": {
+    "created_by": "agent-instruction",
+    "files": ["AGENTS.md", "CLAUDE.md"],
+    "reglas_applied": [
+      "AppError en vez de HTTPException ad-hoc",
+      "commit solo en UnitOfWork",
+      "lazy='raise' + selectinload explicito",
+      "RBAC releido de asignacion_rol por request",
+      "bcrypt via asyncio.to_thread + Semaphore",
+      "handlers async def sin I/O bloqueante",
+      "Pydantic extra='forbid'",
+      "Alembic async, TRIGGERS a mano, sin create_all",
+      "tests contra PostgreSQL real, no SQLite",
+      "solo BackgroundTasks, sin Celery/Redis",
+      "no escribir en tablas de solo-agregado",
+      "config por pydantic-settings/.env",
+      "type hints + snake_case",
+      "no commitear/buildear sin pedido; conventional commits sin co-autoria IA"
+    ],
+    "source_rules": "derivadas del stack real (KB 02, 08) + RN-01..RN-20; confirmadas por el usuario (14/14)"
+  },
+  "discovery": {
+    "skipped": true
+  },
+  "kb": {
+    "created_by": "kb-creator",
+    "source": "ingest",
+    "discovery": {
+      "problem": "Gestionar de forma integral la operación de un taller mecánico (recepción de vehículos, órdenes de trabajo y control de stock de repuestos) con autenticación por JWT en cookies HttpOnly y autorización por roles vigentes consultados en base de datos.",
+      "system_type": "api",
+      "domain": "gestión de taller mecánico (automotriz)",
+      "scale": "public_multi_user",
+      "stack": "Python 3.12 + FastAPI + SQLModel + SQLAlchemy 2.0 (async) + PostgreSQL 16 + asyncpg + Alembic + bcrypt + PyJWT",
+      "needs_infra": true
+    },
+    "files": [
+      "knowledge-base/README.md",
+      "knowledge-base/01_vision_y_objetivos.md",
+      "knowledge-base/02_descripcion_general.md",
+      "knowledge-base/03_actores_y_roles.md",
+      "knowledge-base/04_modelo_de_datos.md",
+      "knowledge-base/05_reglas_de_negocio.md",
+      "knowledge-base/06_funcionalidades.md",
+      "knowledge-base/07_flujos_principales.md",
+      "knowledge-base/08_arquitectura_propuesta.md",
+      "knowledge-base/09_decisiones_y_supuestos.md",
+      "knowledge-base/10_preguntas_abiertas.md"
+    ]
+  },
+  "roadmap": {
+    "created_by": "roadmap-generator",
+    "changes_file": "CHANGES.md",
+    "changes": [
+      "C-01",
+      "C-02",
+      "C-03",
+      "C-04",
+      "C-05",
+      "C-06",
+      "C-07",
+      "C-08",
+      "C-09",
+      "C-10",
+      "C-11",
+      "C-12",
+      "C-13",
+      "C-14",
+      "C-15",
+      "C-16",
+      "C-17",
+      "C-18",
+      "C-19",
+      "C-20"
+    ]
+  },
+  "skills": {
+    "created_by": "find-skill",
+    "recommended": [
+      {
+        "name": "fastapi",
+        "source": "fastapi/fastapi@fastapi",
+        "installs": 13600,
+        "url": "https://skills.sh/fastapi/fastapi/fastapi",
+        "why": "Skill oficial de FastAPI: Depends/Annotated, response_model, Pydantic, SQLModel y HTTPX; aplica a los 20 changes.",
+        "applies_to": ["C-01", "C-02", "C-09", "C-10", "C-15", "C-16", "C-18", "C-19"]
+      },
+      {
+        "name": "fastapi-templates",
+        "source": "wshobson/agents@fastapi-templates",
+        "installs": 26000,
+        "url": "https://skills.sh/wshobson/agents/fastapi-templates",
+        "why": "Layout por capas (routes/models/schemas/services/repositories), BaseRepository genérico, lifespan, JWT+bcrypt y fixtures async de pytest.",
+        "applies_to": ["C-01", "C-05", "C-13", "C-14", "C-15"]
+      },
+      {
+        "name": "sqlmodel",
+        "source": "fastapi/sqlmodel@sqlmodel",
+        "installs": 160,
+        "url": "https://skills.sh/fastapi/sqlmodel/sqlmodel",
+        "why": "Skill oficial del repo SQLModel: Field/Relationship/select, sin caer en patrones declarativos de SQLAlchemy. Pocas instalaciones pero fuente oficial (repo de 18.5K estrellas).",
+        "applies_to": ["C-06", "C-07", "C-13", "C-15", "C-16", "C-18"]
+      },
+      {
+        "name": "auth-implementation-patterns",
+        "source": "wshobson/agents@auth-implementation-patterns",
+        "installs": 19700,
+        "url": "https://skills.sh/wshobson/agents/auth-implementation-patterns",
+        "why": "JWT, flags de cookie segura, bcrypt, RBAC y validación de propiedad de recurso: mapea RN-04, RN-05, RN-07, RN-08, RN-17.",
+        "applies_to": ["C-09", "C-10", "C-11", "C-12"]
+      },
+      {
+        "name": "async-python-patterns",
+        "source": "wshobson/agents@async-python-patterns",
+        "installs": 18200,
+        "url": "https://skills.sh/wshobson/agents/async-python-patterns",
+        "why": "Patrones asyncio: no bloquear el event loop, asyncio.to_thread, timeouts, context managers async y tests con pytest-asyncio.",
+        "applies_to": ["C-03", "C-04", "C-05", "C-14"]
+      },
+      {
+        "name": "python-testing-patterns",
+        "source": "wshobson/agents@python-testing-patterns",
+        "installs": 37300,
+        "url": "https://skills.sh/wshobson/agents/python-testing-patterns",
+        "why": "pytest: fixtures con setup/teardown, tests async, mock de excepciones, testing de DB y cobertura; sostiene los tests de cada change y C-20.",
+        "applies_to": ["C-01", "C-02", "C-05", "C-20"]
+      },
+      {
+        "name": "postgresql-table-design",
+        "source": "wshobson/agents@postgresql-table-design",
+        "installs": 28000,
+        "url": "https://skills.sh/wshobson/agents/postgresql-table-design",
+        "why": "Diseño de esquema Postgres: TIMESTAMPTZ/NUMERIC, CHECK, FKs e índices únicos parciales (RN-03, borrado lógico).",
+        "applies_to": ["C-06", "C-07"]
+      },
+      {
+        "name": "sqlalchemy-alembic-expert-best-practices-code-review",
+        "source": "wispbit-ai/skills@sqlalchemy-alembic-expert-best-practices-code-review",
+        "installs": 2000,
+        "url": "https://skills.sh/wispbit-ai/skills/sqlalchemy-alembic-expert-best-practices-code-review",
+        "why": "Reglas para migraciones Alembic (índices, constraints, migraciones seguras) y modelos SQLAlchemy; útil para env.py async y migraciones 001-003. Precaución: repo de origen con sólo 8 estrellas.",
+        "applies_to": ["C-05", "C-06", "C-07"]
+      },
+      {
+        "name": "python-design-patterns",
+        "source": "wshobson/agents@python-design-patterns",
+        "installs": 23000,
+        "url": "https://skills.sh/wshobson/agents/python-design-patterns",
+        "why": "Arquitectura en capas API/Service/Repository con composición e inyección de dependencias: base conceptual de repositorios y Unit of Work.",
+        "applies_to": ["C-13", "C-14", "C-15", "C-18"]
+      },
+      {
+        "name": "python-background-jobs",
+        "source": "wshobson/agents@python-background-jobs",
+        "installs": 11200,
+        "url": "https://skills.sh/wshobson/agents/python-background-jobs",
+        "why": "Desacoplar notificaciones del request (BackgroundTasks, sin reutilizar sesión) y por qué una cola queda fuera de alcance.",
+        "applies_to": ["C-04", "C-19"]
+      }
+    ],
+    "installed": [
+      { "name": "fastapi", "source": "fastapi/fastapi", "scope": "project", "path": ".agents/skills/fastapi" },
+      { "name": "fastapi-templates", "source": "wshobson/agents", "scope": "project", "path": ".agents/skills/fastapi-templates" },
+      { "name": "auth-implementation-patterns", "source": "wshobson/agents", "scope": "project", "path": ".agents/skills/auth-implementation-patterns" },
+      { "name": "async-python-patterns", "source": "wshobson/agents", "scope": "project", "path": ".agents/skills/async-python-patterns" },
+      { "name": "python-testing-patterns", "source": "wshobson/agents", "scope": "project", "path": ".agents/skills/python-testing-patterns" },
+      { "name": "postgresql-table-design", "source": "wshobson/agents", "scope": "project", "path": ".agents/skills/postgresql-table-design" },
+      { "name": "python-design-patterns", "source": "wshobson/agents", "scope": "project", "path": ".agents/skills/python-design-patterns" },
+      { "name": "python-background-jobs", "source": "wshobson/agents", "scope": "project", "path": ".agents/skills/python-background-jobs" }
+    ],
+    "install_policy": {
+      "filter": "installs > 10000 (user rule)",
+      "scope": "project",
+      "excluded_below_threshold": ["sqlmodel (160)", "sqlalchemy-alembic-expert-best-practices-code-review (2000)"],
+      "notes": "skills-lock.json sólo registra fastapi y python-testing-patterns: el batch de 7 quedó interrumpido al escribir el lock, aunque los 8 directorios están completos y verificados."
+    },
+    "registry_query": {
+      "command": "npx skills find",
+      "worked": true,
+      "queries": ["fastapi", "python", "sqlalchemy", "alembic", "pytest", "pydantic", "jwt auth", "postgres", "async python", "repository pattern", "sqlmodel", "rbac", "api design"],
+      "notes": "Registry respondió con resultados en todas las búsquedas. No existe skill dedicada a Unit of Work ni a RBAC con roles vigentes en DB para FastAPI; tampoco hay coincidencias útiles de 'repository pattern' para Python."
+    }
+  }
+}
