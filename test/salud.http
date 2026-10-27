@@ -1,0 +1,5 @@
+### Verificación de estado
+GET http://localhost:8000/health/live
+
+### Documentación OpenAPI
+GET http://localhost:8000/openapi.json

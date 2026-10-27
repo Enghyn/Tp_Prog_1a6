@@ -135,7 +135,7 @@ Paso │ Agente A (Core / Persistencia) │ Agente B (Seguridad)         │ Age
 ## FASE 0 — Capítulo 1: Cimientos de la API
 
 ### [C-01] `foundation-setup`
-- **Estado**: `[ ]` pendiente
+- **Estado**: `[x]` completado
 - **Scope**: Scaffolding del proyecto + configuración base, sin lógica de negocio
   - Estructura: `app/core/`, `app/modules/{health,usuarios,clientes,repuestos,ordenes}/` (con `__init__.py`), `migrations/`, `test/`
   - `requirements.txt` (o `pyproject.toml`) con versiones fijadas: FastAPI ≥0.111, SQLModel 0.0.24, SQLAlchemy 2.0 async, asyncpg 0.30, Alembic 1.13, pydantic-settings 2.0, bcrypt 4.0, PyJWT 2.8, uvicorn[standard], pytest, pytest-asyncio, httpx
@@ -158,7 +158,7 @@ Paso │ Agente A (Core / Persistencia) │ Agente B (Seguridad)         │ Age
 ## FASE 1 — Capítulo 2: Contratos, validación y semántica HTTP
 
 ### [C-02] `http-contracts-and-errors`
-- **Estado**: `[ ]` pendiente
+- **Estado**: `[x]` completado
 - **Scope**: Contrato transversal de entrada/salida y traducción de errores a códigos HTTP
   - `app/core/errors.py`: `AppError` base + `ConflictoError`, `NoEncontradoError`, `ProhibidoError`, `NoAutenticadoError`, `ReglaNegocioError`, `DemasiadasPeticionesError` (con `retry_after`)
   - Handlers en `main.py`: mapping → `400 / 401 / 403 / 404 / 409 / 422 / 429`; cuerpo uniforme `{"detail", "codigo"}`; cabecera `Retry-After` cuando aplique
@@ -179,7 +179,7 @@ Paso │ Agente A (Core / Persistencia) │ Agente B (Seguridad)         │ Age
 ## FASE 2 — Capítulo 3: Asincronía sin bloqueos
 
 ### [C-03] `async-crypto`
-- **Estado**: `[ ]` pendiente
+- **Estado**: `[x]` completado
 - **Scope**: Criptografía de contraseñas no bloqueante, reutilizable por auth y seed
   - `app/core/security.py`: `hash_password()` / `verify_password()` envolviendo `bcrypt` en `asyncio.to_thread`, protegidas por un `asyncio.Semaphore(settings.bcrypt_max_concurrency)` creado en `lifespan` (`app.state`)
   - `hash_password_sync()` para uso exclusivo de `seed.py`/CLI (documentado: nunca dentro de un handler)
@@ -196,7 +196,7 @@ Paso │ Agente A (Core / Persistencia) │ Agente B (Seguridad)         │ Age
 ---
 
 ### [C-04] `background-notifications`
-- **Estado**: `[ ]` pendiente
+- **Estado**: `[x]` completado
 - **Scope**: Aviso al cliente al terminar una orden, desacoplado del request y sin reutilizar la sesión
   - `app/core/notificaciones.py`: `NotificadorCliente` (Protocol) + `BackgroundTasksNotifier.notificar_orden_terminada(orden_id)` con `await asyncio.sleep(0.5)` y log estructurado
   - Contrato explícito: la tarea se agenda **después** del commit del Unit of Work y **no recibe** `AsyncSession` (evita usar una sesión ya cerrada); los datos necesarios se pasan como valores (ids, email, total)

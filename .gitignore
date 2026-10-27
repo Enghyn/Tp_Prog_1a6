@@ -74,3 +74,9 @@ tmp/
 # Skills lock / state local (NO ignorar .agents/, .atl/ porque ya están en el repo)
 # .active-orchestrator-state.json ya está trackeado
 # skills-lock.json ya está trackeado
+
+.env
+__pycache__/
+*.pyc
+.venv/
+venv/
