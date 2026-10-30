@@ -11,6 +11,7 @@ from app.modules.health import router as health_router
 from app.core.errors import ErrorAplicacion, DemasiadasPeticionesError
 from app.core.seguridad import generar_hash_ficticio
 from app.core.configuracion import configuracion
+from app.core.database import crear_motor_bd, crear_fabricante_sesion
 
 
 logging.basicConfig(
@@ -25,8 +26,12 @@ async def lifespan(app: FastAPI):
     app.state.bcrypt_semaforo = asyncio.Semaphore(configuracion.bcrypt_max_concurrency)
     # Generar hash ficticio para protección contra enumeración
     app.state.hash_ficticio = generar_hash_ficticio()
+    # Inicializar motor y session maker de base de datos
+    app.state.engine = crear_motor_bd()
+    app.state.session_maker = crear_fabricante_sesion(app.state.engine)
     yield
-    # Puntos de finalización preparados para cambios futuros
+    # Liberar recursos del motor de base de datos
+    await app.state.engine.dispose()
 
 
 def create_app() -> FastAPI:

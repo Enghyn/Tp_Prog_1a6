@@ -215,7 +215,7 @@ Paso │ Agente A (Core / Persistencia) │ Agente B (Seguridad)         │ Age
 ## FASE 3 — Capítulo 4: Persistencia, migraciones y seed
 
 ### [C-05] `database-lifecycle`
-- **Estado**: `[ ]` pendiente
+- **Estado**: `[x]` completado
 - **Scope**: Motor asincrónico, sesión por request, health de readiness y base de Alembic
   - `app/core/database.py`: `create_async_engine(database_url, pool_pre_ping=True)` + `async_sessionmaker(expire_on_commit=False)`, guardados en `app.state` durante `lifespan`; `engine.dispose()` al apagar
   - `get_session()` dependency: una sesión por request, `async with` y cierre garantizado; **no** hace `commit()` (eso es del UoW)

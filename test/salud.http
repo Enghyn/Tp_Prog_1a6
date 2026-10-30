@@ -3,3 +3,7 @@ GET http://localhost:8000/health/live
 
 ### Documentación OpenAPI
 GET http://localhost:8000/openapi.json
+
+
+### Verificación de disponibilidad (readiness)
+GET http://localhost:8000/health/ready
