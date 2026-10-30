@@ -25,8 +25,10 @@ El sistema gestiona la actividad diaria de un taller mecánico:
 ## Estructura Obligatoria del Proyecto
 Organización modular por dominio funcional con 6 capas estrictas:
 - `main.py`: Aplicación FastAPI, lifespan (creación/cierre de motor, fábrica de sesiones, hash ficticio de login) y grupos de rutas.
-- `seed.py`: Carga el estado inicial conocido de la base de datos (catálogo de estados, usuarios base, clientes, repuestos con stock inicial, órdenes de prueba, etc.).
+- `seed.py`: Carga idempotente y transaccional del estado inicial conocido de la base de datos (catálogo de estados, usuarios base, clientes, vehículos, repuestos con stock inicial, órdenes demo y auditoría). Admite `--reset --si` y `--forzar`.
 - `app/core/`: Configuración (`config.py`), base de datos (`database.py`), seguridad (`security.py`), dependencias (`dependencies.py`), repositorios base (`repository.py`), paginación (`paginacion.py`) y Unit of Work base (`unit_of_work.py`).
 - `app/modules/<módulo>/`: Módulos funcionales (`health`, `usuarios`, `clientes`, `repuestos`, `ordenes`) conteniendo `models.py`, `schemas.py`, `repository.py`, `unit_of_work.py`, `service.py` y `router.py`.
 - `migrations/`: Configuración y versiones de Alembic.
-- `test/`: Archivos `.http` para pruebas de integración y `solo_agregado.sql`.
+- `test/`: Solo artefactos manuales: archivos `.http` y `seed.sql` (espejo SQL idempotente de `seed.py`). No contiene código Python.
+- `tests/`: Suite pytest (`conftest.py`, `test_*.py`) configurada por `pytest.ini` con `testpaths = tests`.
+- `scripts/`: Utilidades operativas, incluida `verificar_solo_agregado.sql` para comprobar los triggers de RN-15.

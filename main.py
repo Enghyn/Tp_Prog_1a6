@@ -8,6 +8,7 @@ from contextlib import asynccontextmanager
 from sqlalchemy.exc import IntegrityError
 
 from app.modules.health import router as health_router
+from app.modules.usuarios import router as usuarios_router
 from app.core.errors import ErrorAplicacion, DemasiadasPeticionesError
 from app.core.seguridad import generar_hash_ficticio
 from app.core.configuracion import configuracion
@@ -68,6 +69,7 @@ def create_app() -> FastAPI:
         )
 
     app.include_router(health_router.router)
+    app.include_router(usuarios_router.router)
 
     return app
 

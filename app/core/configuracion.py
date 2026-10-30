@@ -12,6 +12,7 @@ class Configuracion(BaseSettings):
     login_max_intentos: int = 5
     login_ventana_seg: int = 60
     entorno: str = "dev"
+    cookie_secure: bool | None = None
 
     @field_validator("jwt_secret")
     @classmethod

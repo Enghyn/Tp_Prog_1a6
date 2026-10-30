@@ -7,21 +7,21 @@ Provee un endpoint de verificación de vida para la API sin necesidad de conecti
 ## Requirements
 
 ### Requirement: Endpoint de verificación de vida
-El sistema DEBE exponer un endpoint `GET /health/live` que retorne HTTP 200 sin acceder a la base de datos.
+El sistema SHALL exponer un endpoint `GET /health/live` que retorne HTTP 200 sin acceder a la base de datos.
 
 #### Scenario: Verificación exitosa de vida
 - **CUANDO** un cliente realiza una solicitud GET a `/health/live`
 - **ENTONCES** el sistema retorna HTTP 200 con una respuesta exitosa
 
 ### Requirement: Inicialización de la aplicación
-El sistema DEBE proveer una fábrica de aplicación FastAPI con logging estructurado y un contexto de ciclo de vida preparado para futuros hooks de inicialización.
+El sistema SHALL proveer una fábrica de aplicación FastAPI con logging estructurado y un contexto de ciclo de vida preparado para futuros hooks de inicialización.
 
 #### Scenario: Creación de la aplicación
 - **CUANDO** se llama a `create_app()`
 - **ENTONCES** se retorna una instancia de FastAPI configurada con logging y ciclo de vida adjuntado
 
 ### Requirement: Carga de configuración
-El sistema DEBE cargar la configuración desde variables de entorno usando pydantic-settings, fallando rápidamente con un error explícito si faltan secretos requeridos como `JWT_SECRET`.
+El sistema SHALL cargar la configuración desde variables de entorno usando pydantic-settings, fallando rápidamente con un error explícito si faltan secretos requeridos como `JWT_SECRET`.
 
 #### Scenario: Falta JWT_SECRET
 - **CUANDO** la aplicación inicia sin `JWT_SECRET` configurado
@@ -32,7 +32,7 @@ El sistema DEBE cargar la configuración desde variables de entorno usando pydan
 - **ENTONCES** la instancia de Configuracion se carga correctamente con los valores del entorno o valores por defecto
 
 ### Requirement: Endpoint de verificación de preparación (readiness probe)
-El sistema DEBE (SHALL) exponer un endpoint `GET /health/ready` que verifique la conectividad activa a la base de datos PostgreSQL ejecutando una consulta `SELECT 1` con un tiempo de espera acotado.
+El sistema SHALL exponer un endpoint `GET /health/ready` que verifique la conectividad activa a la base de datos PostgreSQL ejecutando una consulta `SELECT 1` con un tiempo de espera acotado.
 
 #### Scenario: Verificación exitosa de base de datos
 - **CUANDO** un cliente realiza una solicitud GET a `/health/ready` y la base de datos está disponible y responde dentro del tiempo límite

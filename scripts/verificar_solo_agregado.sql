@@ -1,7 +1,7 @@
--- solo_agregado.sql
+-- verificar_solo_agregado.sql
 -- Verificación directa de los triggers RN-15.
 -- Ejecutar después de cargar al menos una fila en cada tabla:
---   psql "$DATABASE_URL" -f test/solo_agregado.sql
+--   psql "$DATABASE_URL" -f scripts/verificar_solo_agregado.sql
 -- Si una tabla está vacía, el caso se informa como SKIP; no se presenta como
 -- una verificación exitosa.
 

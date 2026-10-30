@@ -137,12 +137,12 @@ Paso │ Agente A (Core / Persistencia) │ Agente B (Seguridad)         │ Age
 ### [C-01] `foundation-setup`
 - **Estado**: `[x]` completado
 - **Scope**: Scaffolding del proyecto + configuración base, sin lógica de negocio
-  - Estructura: `app/core/`, `app/modules/{health,usuarios,clientes,repuestos,ordenes}/` (con `__init__.py`), `migrations/`, `test/`
+  - Estructura: `app/core/`, `app/modules/{health,usuarios,clientes,repuestos,ordenes}/` (con `__init__.py`), `migrations/`, `tests/` (suite pytest) y `test/` (artefactos manuales `.http`)
   - `requirements.txt` (o `pyproject.toml`) con versiones fijadas: FastAPI ≥0.111, SQLModel 0.0.24, SQLAlchemy 2.0 async, asyncpg 0.30, Alembic 1.13, pydantic-settings 2.0, bcrypt 4.0, PyJWT 2.8, uvicorn[standard], pytest, pytest-asyncio, httpx
   - `app/core/config.py`: `Settings(BaseSettings)` con `database_url`, `jwt_secret`, `access_token_ttl_min`, `bcrypt_max_concurrency`, `login_max_intentos`, `login_ventana_seg`, `entorno`; `.env.example` versionado y `.env` en `.gitignore`
   - `main.py`: `create_app()` con `lifespan` vacío preparado (hooks documentados), logging estructurado, router raíz
   - `app/modules/health/router.py`: `GET /health/live` → `200` sin tocar la base
-  - `test/health.http` + `test/conftest.py` con `httpx.AsyncClient`/`ASGITransport`
+  - `test/health.http` + `tests/conftest.py` con `httpx.AsyncClient`/`ASGITransport`
   - `README.md`: comandos de instalación, `uvicorn app.main:app --reload`, `pytest`
   - Tests: `/health/live` 200, arranque sin `JWT_SECRET` falla con error explícito, `/openapi.json` 200
 - **Dependencias**: ninguna
@@ -221,7 +221,7 @@ Paso │ Agente A (Core / Persistencia) │ Agente B (Seguridad)         │ Age
   - `get_session()` dependency: una sesión por request, `async with` y cierre garantizado; **no** hace `commit()` (eso es del UoW)
   - `GET /health/ready`: `SELECT 1` → `200`, y `503` si la base no responde (timeout acotado)
   - `alembic.ini` + `migrations/env.py` con plantilla **asíncrona** leyendo `Settings.database_url`; `migrations/script.py.mako`
-  - `test/conftest.py`: engine de test por sesión de pytest, base efímera, transacción con rollback por test, override de `get_session`
+  - `tests/conftest.py`: engine de test por sesión de pytest, base efímera, transacción con rollback por test, override de `get_session`
   - Tests: `/health/ready` 200 con DB y 503 con URL inválida, sesión se cierra al final del request, `alembic upgrade head` corre sin error
 - **Dependencias**: `C-01`, `C-02`
 - **Governance**: ALTO
@@ -256,7 +256,7 @@ Paso │ Agente A (Core / Persistencia) │ Agente B (Seguridad)         │ Age
   - Modelos: `Cliente` (`usuario_id` UNIQUE nullable), `Vehiculo` (`borrado_en`, CHECK `anio` 1950-2100), `Repuesto` (`borrado_en`, CHECK `precio > 0`, `stock >= 0`), `EstadoOrden` (PK `codigo`, `posicion` UNIQUE, `es_final`), `OrdenTrabajo` (FK `estado` → `estado_orden.codigo`, `mecanico_id` nullable, `total >= 0`), `ItemOrden` (UNIQUE `(orden_id, repuesto_id)`, `cantidad > 0`), `HistorialEstadoOrden`, `MovimientoStock` (`cantidad != 0`), `HistorialPrecioRepuesto` (CHECK `precio_nuevo > precio_anterior`)
   - Relaciones bidireccionales completas con `back_populates` y `lazy="raise"`; colecciones de composición con `cascade="all, delete-orphan"` donde corresponda (`ItemOrden`)
   - Migración `002_dominio_taller`: FKs, CHECKs e índices únicos parciales `uq_vehiculo_patente_vigente (patente) WHERE borrado_en IS NULL` y `uq_repuesto_codigo_vigente (codigo) WHERE borrado_en IS NULL`
-  - Migración `003_solo_agregado` escrita a mano: función + `TRIGGER BEFORE UPDATE OR DELETE` en `movimiento_stock`, `historial_estado_orden`, `historial_precio_repuesto` (RN-15) + `test/solo_agregado.sql`
+  - Migración `003_solo_agregado` escrita a mano: función + `TRIGGER BEFORE UPDATE OR DELETE` en `movimiento_stock`, `historial_estado_orden`, `historial_precio_repuesto` (RN-15) + `scripts/verificar_solo_agregado.sql`
   - Tests: `UPDATE`/`DELETE` sobre tablas de sólo agregado falla, patente reutilizable tras baja lógica, ítem repetido en la misma orden rechazado, CHECK de año/precio/stock
 - **Dependencias**: `C-06`
 - **Governance**: CRITICO
@@ -265,19 +265,20 @@ Paso │ Agente A (Core / Persistencia) │ Agente B (Seguridad)         │ Age
   - `knowledge-base/09_decisiones_y_supuestos.md` §1, §2
   - `knowledge-base/08_arquitectura_propuesta.md` §Model
   - `knowledge-base/05_reglas_de_negocio.md` §RN-15, §RN-16, §RN-19
-  - `knowledge-base/02_descripcion_general.md` §Estructura Obligatoria (`test/solo_agregado.sql`)
+  - `knowledge-base/02_descripcion_general.md` §Estructura Obligatoria (`scripts/verificar_solo_agregado.sql`)
 
 ---
 
 ### [C-08] `seed-inicial`
-- **Estado**: `[ ]` pendiente
+- **Estado**: `[x]` completado
 - **Scope**: Carga reproducible del estado inicial conocido de la base
-  - `seed.py` idempotente (verifica existencia antes de insertar; `--reset` documentado para recrear)
-  - Catálogo `estado_orden`: `PENDIENTE` (1), `EN_REPARACION` (2), `TERMINADA` (3, `es_final=true`), `CANCELADA` (4, `es_final=true`) (RN-19)
-  - Usuarios base ADMIN / RECEPCION / MECANICO / CLIENTE con contraseña hasheada vía `hash_password_sync` y roles en `asignacion_rol`; al menos un usuario con `debe_cambiar_password=True`
-  - Repuestos con stock inicial + `movimiento_stock` de motivo `ALTA` (RN-14); clientes, vehículos y 2-3 órdenes demo en distintos estados con su línea inicial de historial
-  - Registro en `evento_seguridad` con `actor = 'SISTEMA'`
-  - Tests: `seed.py` dos veces seguidas no duplica filas, catálogo con `posicion` correcta, órdenes demo respetan `estado_orden`
+  - `seed.py` idempotente y transaccional: resuelve cada entidad por clave natural, calcula hashes con `hash_password_sync` fuera del loop y expone `--reset --si` (Alembic `downgrade base` + `upgrade head`) y `--forzar` para `entorno=produccion`
+  - Catálogo `estado_orden` convergente: `PENDIENTE` (1), `EN_REPARACION` (2), `TERMINADA` (3, `es_final=true`), `CANCELADA` (4, `es_final=true`) (RN-19)
+  - Usuarios base ADMIN / RECEPCION / MECANICO / CLIENTE con rol abierto en `asignacion_rol`; `mecanico` con `debe_cambiar_password=True`
+  - Repuestos con stock inicial + `movimiento_stock` `ALTA` (RN-14); clientes, vehículos y tres órdenes demo (PENDIENTE, EN_REPARACION, TERMINADA) con ítems, totales con `Decimal`, historial sin saltos y consumo `TERMINACION` de la orden terminada
+  - Registro único en `evento_seguridad` con `actor = 'SISTEMA'` / `accion = 'seed_inicial'`
+  - Espejo `test/seed.sql` idempotente (`ON CONFLICT DO NOTHING` / `WHERE NOT EXISTS`, hashes congelados) y suite pytest en `tests/` (`pytest.ini` con `testpaths = tests`)
+  - Tests: doble ejecución de `seed.py` y de `test/seed.sql` no duplica filas; paridad de claves naturales y conteos entre ambos; guardias de producción y `--reset`; verificación RN-15 con `scripts/verificar_solo_agregado.sql`
 - **Dependencias**: `C-03`, `C-07`
 - **Governance**: MEDIO
 - **Leer antes**:
@@ -291,7 +292,7 @@ Paso │ Agente A (Core / Persistencia) │ Agente B (Seguridad)         │ Age
 ## FASE 4 — Capítulo 5: Autenticación, autorización y roles
 
 ### [C-09] `auth-login-jwt`
-- **Estado**: `[ ]` pendiente
+- **Estado**: `[x]` completado
 - **Scope**: Login con JWT en cookie HttpOnly, rate limit de intentos y sesión actual
   - `POST /auth/login`: cuenta `intento_acceso` fallidos por `(email, ip)` en los últimos 60 s; si ≥ 5 → `429` + `Retry-After` **sin** calcular hash (RN-08)
   - Búsqueda por email + `verify_password_o_dummy` (RN-09, C-03); usuario inactivo → `401` uniforme
@@ -509,7 +510,7 @@ Paso │ Agente A (Core / Persistencia) │ Agente B (Seguridad)         │ Age
   - `test/*.http` por módulo (`health`, `auth`, `usuarios`, `clientes`, `repuestos`, `ordenes`) con variables de entorno, cookie `access_token` y casos felices + errores declarados
   - Suite pytest de contrato: cada endpoint de `06_funcionalidades.md` responde el código esperado, y cada regla RN-01…RN-20 tiene al menos un test que la ejerce
   - Smoke E2E del flujo completo: registro → login → alta cliente/vehículo → alta de orden → iniciar → terminar → consulta `/mis-ordenes` y `/repuestos/{id}/movimientos`
-  - Verificación RN-15 sobre base real: `UPDATE`/`DELETE` en las tres tablas de sólo agregado falla, ejecutando `test/solo_agregado.sql`
+  - Verificación RN-15 sobre base real: `UPDATE`/`DELETE` en las tres tablas de sólo agregado falla, ejecutando `scripts/verificar_solo_agregado.sql`
   - `README.md` final: variables de entorno, `alembic upgrade head`, `python seed.py`, `pytest`, arranque con uvicorn; script `scripts/verificar` (lint + tests + smoke)
   - Tests: suite completa verde sobre base recién migrada y sembrada, sin warnings de sesión abierta
 - **Dependencias**: `C-11`, `C-12`, `C-17`, `C-19`
@@ -518,7 +519,7 @@ Paso │ Agente A (Core / Persistencia) │ Agente B (Seguridad)         │ Age
   - `knowledge-base/06_funcionalidades.md` (todos los módulos y códigos HTTP)
   - `knowledge-base/05_reglas_de_negocio.md` §RN-01 a §RN-20
   - `knowledge-base/07_flujos_principales.md` (los 3 flujos)
-  - `knowledge-base/02_descripcion_general.md` §Estructura Obligatoria (`test/`)
+  - `knowledge-base/02_descripcion_general.md` §Estructura Obligatoria (`test/` para `.http` + `seed.sql`, `tests/` para pytest)
   - `knowledge-base/10_preguntas_abiertas.md` (limitaciones asumidas)
 
 ---
@@ -552,5 +553,7 @@ Paso │ Agente A (Core / Persistencia) │ Agente B (Seguridad)         │ Age
 **Camino crítico**: 11 changes.
 **Gates de paralelismo**: 12 (GATE 0 a GATE 11).
 **Primer change recomendado**: `C-01` (`foundation-setup`).
+
+> **Convención de carpetas (desde C-08):** `tests/` concentra la suite pytest (`conftest.py`, `test_*.py`, `pytest.ini`); `test/` queda solo con archivos `.http` y `seed.sql`; `scripts/` conserva `verificar_solo_agregado.sql` para la verificación RN-15.
 
 > Para arrancar: `/opsx:propose C-01-foundation-setup`

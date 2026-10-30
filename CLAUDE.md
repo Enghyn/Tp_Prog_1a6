@@ -95,6 +95,7 @@ Son contrato. Romperlas es un defecto:
 12. **NUNCA** secretos ni DSN hardcodeados → `pydantic-settings` leyendo de variables de entorno / `.env`.
 13. **NUNCA** código sin type hints ni identificadores fuera de `snake_case`.
 14. **NUNCA** commitear ni buildear sin pedido explícito → conventional commits, sin co-autoría de IA en el mensaje.
+15. **NUNCA** mezclar la suite pytest con los artefactos manuales → `tests/` contiene `conftest.py` y `test_*.py` (configurados por `pytest.ini`); `test/` contiene únicamente archivos `.http` y `seed.sql`; `scripts/verificar_solo_agregado.sql` conserva la verificación RN-15.
 
 ---
 
