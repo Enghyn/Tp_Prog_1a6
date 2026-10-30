@@ -9,6 +9,12 @@ from sqlmodel import SQLModel
 from alembic import context
 from app.core.configuracion import configuracion
 
+# Import models to ensure they are registered with SQLModel metadata
+import app.modules.usuarios.models  # noqa
+import app.modules.clientes.models  # noqa
+import app.modules.repuestos.models  # noqa
+import app.modules.ordenes.models  # noqa
+
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
 config = context.config

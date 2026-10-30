@@ -18,20 +18,26 @@ class BackgroundTasksNotifier:
 
     def notificar_orden_terminada(self, orden_id: int, email: str | None = None, total: float | None = None) -> None:
         if self.background_tasks is not None:
-            self.background_tasks.add_task(_enviar_notificacion_orden_terminada, orden_id, email, total)
+            self.background_tasks.add_task(_ejecutar_notificacion_segura, orden_id, email, total)
         else:
             asyncio.create_task(_enviar_notificacion_orden_terminada(orden_id, email, total))
 
 
 async def _enviar_notificacion_orden_terminada(orden_id: int, email: str | None = None, total: float | None = None) -> None:
+    await asyncio.sleep(0.5)
+    logger.info(
+        "Notificación enviada para orden terminada",
+        extra={"orden_id": orden_id, "email": email, "total": total},
+    )
+
+
+async def _ejecutar_notificacion_segura(
+    orden_id: int, email: str | None = None, total: float | None = None
+) -> None:
     try:
-        await asyncio.sleep(0.5)
-        logger.info(
-            "Notificación enviada para orden terminada",
-            extra={"orden_id": orden_id, "email": email, "total": total},
-        )
-    except Exception as e:
-        logger.exception("Error al enviar notificación para orden %s: %s", orden_id, e)
+        await _enviar_notificacion_orden_terminada(orden_id, email, total)
+    except Exception as exc:
+        logger.exception("Error al enviar notificación para orden %s: %s", orden_id, exc)
 
 
 # Alias para compatibilidad
