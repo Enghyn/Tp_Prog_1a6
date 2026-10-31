@@ -1,6 +1,6 @@
 # API Taller Mecánico
 
-## Integrantes (Comision 4)
+## Grupo: Aura (Comision 4)
 
 - Enzo Giaquinta
 - Agustin Contardi
