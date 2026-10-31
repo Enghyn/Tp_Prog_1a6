@@ -35,6 +35,7 @@ class MovimientoStockRead(BaseModel):
 
     id: int
     repuesto_id: int
+    orden_id: int | None = None
     usuario_id: int
     cantidad: int
     motivo: str

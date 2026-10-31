@@ -484,7 +484,7 @@ Paso │ Agente A (Core / Persistencia) │ Agente B (Seguridad)         │ Age
 ---
 
 ### [C-19] `ordenes-transiciones`
-- **Estado**: `[ ]` pendiente
+- **Estado**: `[x]` completado
 - **Scope**: Inicio, terminación con descuento atómico de stock y cancelación de órdenes
   - `POST /ordenes/{id}/iniciar`: asigna el mecánico autenticado si la orden no tiene uno, `PENDIENTE → EN_REPARACION`, línea de historial; transición inválida → `409` (RN-11)
   - `POST /ordenes/{id}/terminar`: UoW único → verifica stock de cada ítem, descuenta `repuesto.stock`, registra `movimiento_stock` (cantidad negativa, motivo `TERMINACION`), pasa a `TERMINADA` y agrega historial; stock insuficiente → `rollback` total + `409` (RN-13)

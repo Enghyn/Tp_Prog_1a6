@@ -16,8 +16,10 @@ from app.modules.ordenes.models import (
 from app.modules.ordenes.repository import es_duenio_de_orden
 from app.modules.ordenes.schemas import OrdenCreate
 from app.modules.ordenes.unit_of_work import OrdenesUnitOfWork
-from app.modules.repuestos.models import Repuesto
+from app.modules.repuestos.models import MovimientoStock, Repuesto
+from app.modules.usuarios.models import Usuario
 from app.modules.usuarios.repository import obtener_roles_vigentes_por_usuario
+from app.modules.clientes.models import Cliente
 
 
 async def crear_orden(
@@ -171,3 +173,144 @@ async def mis_ordenes(
 
 async def listar_estados(uow: OrdenesUnitOfWork) -> list[EstadoOrden]:
     return list(await uow.estados.get_all())
+
+
+def transicion_valida(desde: str, hasta: str) -> bool:
+    """Máquina de estados de orden (RN-11)."""
+    if desde == "PENDIENTE" and hasta == "EN_REPARACION":
+        return True
+    if desde == "EN_REPARACION" and hasta == "TERMINADA":
+        return True
+    if hasta == "CANCELADA" and desde not in ("TERMINADA", "CANCELADA"):
+        return True
+    return False
+
+
+async def iniciar_orden(
+    uow: OrdenesUnitOfWork, orden_id: int, usuario_id: int
+) -> OrdenTrabajo:
+    orden = await uow.ordenes.get_by_id(orden_id)
+    if orden is None:
+        raise NoEncontradoError("Orden no encontrada", "ORDEN_NO_ENCONTRADA")
+
+    if not transicion_valida(orden.estado, "EN_REPARACION"):
+        raise ConflictoError("Transición inválida", "TRANSICION_INVALIDA")
+
+    if orden.mecanico_id is None:
+        orden.mecanico_id = usuario_id
+
+    orden.estado = "EN_REPARACION"
+    await uow.ordenes.update(orden)
+
+    ahora = datetime.now(timezone.utc)
+    historial = HistorialEstadoOrden(
+        orden_id=orden.id,
+        desde_estado="PENDIENTE",
+        hasta_estado="EN_REPARACION",
+        usuario_id=usuario_id,
+        cuando=ahora,
+    )
+    await uow.historial.add(historial)
+
+    return await uow.ordenes.get_by_id(orden.id)
+
+
+async def terminar_orden(
+    uow: OrdenesUnitOfWork, orden_id: int, usuario_id: int
+) -> tuple[OrdenTrabajo, str | None]:
+    orden = await uow.ordenes.get_by_id(orden_id)
+    if orden is None:
+        raise NoEncontradoError("Orden no encontrada", "ORDEN_NO_ENCONTRADA")
+
+    if not transicion_valida(orden.estado, "TERMINADA"):
+        raise ConflictoError("Transición inválida", "TRANSICION_INVALIDA")
+
+    # Pre-check de stock completo antes de mutar (RN-13)
+    for item in orden.items:
+        repuesto = item.repuesto
+        if repuesto is None:
+            repuesto = await uow.session.get(Repuesto, item.repuesto_id)
+            item.repuesto = repuesto
+        if repuesto is None or repuesto.stock < item.cantidad:
+            raise ConflictoError("Stock insuficiente", "STOCK_INSUFICIENTE")
+
+    ahora = datetime.now(timezone.utc)
+    for item in orden.items:
+        repuesto = item.repuesto
+        if repuesto is None:
+            repuesto = await uow.session.get(Repuesto, item.repuesto_id)
+        repuesto.stock -= item.cantidad
+        uow.session.add(repuesto)
+
+        movimiento = MovimientoStock(
+            repuesto_id=item.repuesto_id,
+            orden_id=orden.id,
+            usuario_id=usuario_id,
+            cantidad=-item.cantidad,
+            motivo="TERMINACION",
+            cuando=ahora,
+        )
+        uow.session.add(movimiento)
+
+    await uow.session.flush()
+
+    orden.estado = "TERMINADA"
+    await uow.ordenes.update(orden)
+
+    historial = HistorialEstadoOrden(
+        orden_id=orden.id,
+        desde_estado="EN_REPARACION",
+        hasta_estado="TERMINADA",
+        usuario_id=usuario_id,
+        cuando=ahora,
+    )
+    await uow.historial.add(historial)
+
+    # resolver email del cliente
+    email: str | None = None
+    vehiculo = orden.vehiculo
+    if vehiculo is not None:
+        cliente = await uow.session.get(Cliente, vehiculo.cliente_id)
+        if cliente is not None and cliente.usuario_id is not None:
+            usuario = await uow.session.get(Usuario, cliente.usuario_id)
+            if usuario is not None:
+                email = usuario.email
+
+    orden_recargada = await uow.ordenes.get_by_id(orden.id)
+    return orden_recargada, email
+
+
+async def cancelar_orden(
+    uow: OrdenesUnitOfWork, orden_id: int, usuario_id: int
+) -> OrdenTrabajo:
+    orden = await uow.ordenes.get_by_id(orden_id)
+    if orden is None:
+        raise NoEncontradoError("Orden no encontrada", "ORDEN_NO_ENCONTRADA")
+
+    # Permisos PRIMERO (RN-12)
+    roles = await obtener_roles_vigentes_por_usuario(uow.session, usuario_id)
+    permitido = "RECEPCION" in roles or "ADMIN" in roles
+    if not permitido:
+        permitido = await es_duenio_de_orden(uow.session, usuario_id, orden_id)
+    if not permitido:
+        raise ProhibidoError("Sin permiso", "SIN_PERMISO")
+
+    # Estado DESPUÉS
+    if not transicion_valida(orden.estado, "CANCELADA"):
+        raise ConflictoError("Transición inválida", "TRANSICION_INVALIDA")
+
+    estado_anterior = orden.estado
+    orden.estado = "CANCELADA"
+    await uow.ordenes.update(orden)
+
+    ahora = datetime.now(timezone.utc)
+    historial = HistorialEstadoOrden(
+        orden_id=orden.id,
+        desde_estado=estado_anterior,
+        hasta_estado="CANCELADA",
+        usuario_id=usuario_id,
+        cuando=ahora,
+    )
+    await uow.historial.add(historial)
+
+    return await uow.ordenes.get_by_id(orden.id)
