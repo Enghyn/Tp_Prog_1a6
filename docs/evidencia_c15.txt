@@ -1,4 +1,4 @@
-﻿Evidencia C-15 (N+1): detalle de una orden con 2 items y otra con 4.
+ï»¿Evidencia C-15 (N+1): detalle de una orden con 2 items y otra con 4.
 Consultas fijas independientes de la cantidad de items (selectinload en el repositorio).
 Generado contra PostgreSQL 17 real (TimeZone America/Buenos_Aires).
 CREATED orders: 2044 (2 items) 2045 (4 items)
