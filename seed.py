@@ -34,7 +34,7 @@ from app.modules.ordenes.models import (
     ItemOrden,
     OrdenTrabajo,
 )
-from app.modules.repuestos.models import MovimientoStock, Repuesto
+from app.modules.repuestos.models import HistorialPrecioRepuesto, MovimientoStock, Repuesto
 from app.modules.usuarios.models import AsignacionRol, EventoSeguridad, Usuario
 
 
@@ -397,6 +397,16 @@ async def _cargar_repuestos(session: AsyncSession) -> dict[str, int]:
                 cuando=CUANDO_ALTA,
             )
         )
+        if esperado.codigo == "FIL-001":
+            session.add(
+                HistorialPrecioRepuesto(
+                    repuesto_id=repuesto.id,
+                    usuario_id=admin.id,
+                    precio_anterior=Decimal("8000.00"),
+                    precio_nuevo=esperado.precio,
+                    cuando=CUANDO_ALTA,
+                )
+            )
         creados += 1
         logger.info("repuesto creado: %s", esperado.codigo)
 

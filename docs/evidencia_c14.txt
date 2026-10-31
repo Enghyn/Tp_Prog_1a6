@@ -1,0 +1,53 @@
+﻿Evidencia C-14 (solo-agregado): los seis rechazos del disparador RN-15 + clave foranea.
+Ejecutado sobre base recien migrada y sembrada (python seed.py).
+Generado contra PostgreSQL 17 real.
+CREATE FUNCTION
+psql.exe : psql:scripts/verificar_solo_agregado.sql:39: NOTICE:  OK historial_estado_orden UPDATE bloqueado: Tabla de
+solo-agregado: las filas no pueden modificarse ni eliminarse (tabla: historial_estado_orden)
+En línea: 1 Carácter: 32
++ ... stgres123"; & "C:\Program Files\PostgreSQL\17\bin\psql.exe" -h 127.0. ...
++                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (psql:scripts/ve...l_estado_orden):String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+
+ assert_solo_agregado_bloqueado
+--------------------------------
+
+(1 fila)
+
+psql:scripts/verificar_solo_agregado.sql:43: NOTICE:  OK historial_estado_orden DELETE bloqueado: Tabla de
+solo-agregado: las filas no pueden modificarse ni eliminarse (tabla: historial_estado_orden)
+ assert_solo_agregado_bloqueado
+--------------------------------
+
+(1 fila)
+
+psql:scripts/verificar_solo_agregado.sql:47: NOTICE:  OK movimiento_stock UPDATE bloqueado: Tabla de solo-agregado:
+las filas no pueden modificarse ni eliminarse (tabla: movimiento_stock)
+ assert_solo_agregado_bloqueado
+--------------------------------
+
+(1 fila)
+
+psql:scripts/verificar_solo_agregado.sql:51: NOTICE:  OK movimiento_stock DELETE bloqueado: Tabla de solo-agregado:
+las filas no pueden modificarse ni eliminarse (tabla: movimiento_stock)
+ assert_solo_agregado_bloqueado
+--------------------------------
+
+(1 fila)
+
+psql:scripts/verificar_solo_agregado.sql:55: NOTICE:  OK historial_precio_repuesto UPDATE bloqueado: Tabla de
+solo-agregado: las filas no pueden modificarse ni eliminarse (tabla: historial_precio_repuesto)
+ assert_solo_agregado_bloqueado
+--------------------------------
+
+(1 fila)
+
+psql:scripts/verificar_solo_agregado.sql:59: NOTICE:  OK historial_precio_repuesto DELETE bloqueado: Tabla de
+solo-agregado: las filas no pueden modificarse ni eliminarse (tabla: historial_precio_repuesto)
+ assert_solo_agregado_bloqueado
+--------------------------------
+
+(1 fila)
+
+DROP FUNCTION

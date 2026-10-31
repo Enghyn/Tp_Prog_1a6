@@ -13,6 +13,7 @@ class Configuracion(BaseSettings):
     login_ventana_seg: int = 60
     entorno: str = "dev"
     cookie_secure: bool | None = None
+    sql_echo: bool = False
 
     @field_validator("jwt_secret")
     @classmethod

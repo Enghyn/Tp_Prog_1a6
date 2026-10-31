@@ -1,0 +1,20 @@
+﻿Evidencia C-15 (N+1): detalle de una orden con 2 items y otra con 4.
+Consultas fijas independientes de la cantidad de items (selectinload en el repositorio).
+Generado contra PostgreSQL 17 real (TimeZone America/Buenos_Aires).
+CREATED orders: 2044 (2 items) 2045 (4 items)
+
+===== ORDEN CON 2 items (id=2044) =====
+Total consultas SQL: 5
+  [1] SELECT orden_trabajo.id, orden_trabajo.vehiculo_id, orden_trabajo.mecanico_id, orden_trabajo.estado, orden_trabajo.falla, orden_trabajo.creada_en, orden_trabajo.total FROM orden_trabajo WHERE orden_trabajo.id = $1::INTEGER
+  [2] SELECT vehiculo.id, vehiculo.cliente_id, vehiculo.patente, vehiculo.marca, vehiculo.modelo, vehiculo.anio, vehiculo.borrado_en FROM vehiculo WHERE vehiculo.id IN ($1::INTEGER)
+  [3] SELECT item_orden.orden_id, item_orden.id, item_orden.repuesto_id, item_orden.cantidad, item_orden.precio_unitario FROM item_orden WHERE item_orden.orden_id IN ($1::INTEGER)
+  [4] SELECT repuesto.id, repuesto.codigo, repuesto.descripcion, repuesto.precio, repuesto.stock, repuesto.borrado_en FROM repuesto WHERE repuesto.id IN ($1::INTEGER, $2::INTEGER)
+  [5] SELECT DISTINCT asignacion_rol.rol FROM asignacion_rol WHERE asignacion_rol.usuario_id = $1::INTEGER AND asignacion_rol.revocada_en IS NULL AND (asignacion_rol.vence_en IS NULL OR asignacion_rol.vence_en > $2::TIMESTAMP WITH TIME ZONE) ORDER BY asignacion_rol.rol
+
+===== ORDEN CON 4 items (id=2045) =====
+Total consultas SQL: 5
+  [1] SELECT orden_trabajo.id, orden_trabajo.vehiculo_id, orden_trabajo.mecanico_id, orden_trabajo.estado, orden_trabajo.falla, orden_trabajo.creada_en, orden_trabajo.total FROM orden_trabajo WHERE orden_trabajo.id = $1::INTEGER
+  [2] SELECT vehiculo.id, vehiculo.cliente_id, vehiculo.patente, vehiculo.marca, vehiculo.modelo, vehiculo.anio, vehiculo.borrado_en FROM vehiculo WHERE vehiculo.id IN ($1::INTEGER)
+  [3] SELECT item_orden.orden_id, item_orden.id, item_orden.repuesto_id, item_orden.cantidad, item_orden.precio_unitario FROM item_orden WHERE item_orden.orden_id IN ($1::INTEGER)
+  [4] SELECT repuesto.id, repuesto.codigo, repuesto.descripcion, repuesto.precio, repuesto.stock, repuesto.borrado_en FROM repuesto WHERE repuesto.id IN ($1::INTEGER, $2::INTEGER, $3::INTEGER, $4::INTEGER)
+  [5] SELECT DISTINCT asignacion_rol.rol FROM asignacion_rol WHERE asignacion_rol.usuario_id = $1::INTEGER AND asignacion_rol.revocada_en IS NULL AND (asignacion_rol.vence_en IS NULL OR asignacion_rol.vence_en > $2::TIMESTAMP WITH TIME ZONE) ORDER BY asignacion_rol.rol

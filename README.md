@@ -31,6 +31,18 @@ pip install -r requirements.txt
 cp .env.example .env
 # Editar .env con tus valores
 ```
+   - Para generar la clave de firma de los tokens (JWT_SECRET):
+     ```bash
+     python -c "import secrets; print(secrets.token_urlsafe(32))"
+     ```
+   - `SQL_ECHO=false` por defecto; poner `true` para ver las consultas SQL en consola (diagnostico).
+
+4. Crear el esquema y cargar los datos iniciales:
+```bash
+alembic upgrade head
+python seed.py
+```
+   (`python seed.py --reset --si` recrea el esquema desde cero; en `entorno=produccion` exige `--forzar`.)
 
 ## Ejecución
 

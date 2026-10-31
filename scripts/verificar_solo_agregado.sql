@@ -58,4 +58,4 @@ SELECT pg_temp.assert_solo_agregado_bloqueado(
     'DELETE FROM historial_precio_repuesto WHERE id = %s'
 );
 
-DROP FUNCTION pg_temp.assert_solo_agregado_bloqueado(text, text, text);
+DROP FUNCTION IF EXISTS pg_temp.assert_solo_agregado_bloqueado(text, text, text);

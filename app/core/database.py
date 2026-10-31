@@ -10,7 +10,7 @@ from app.core.configuracion import configuracion
 
 def crear_motor_bd(url: str | None = None) -> AsyncEngine:
     db_url = url or str(configuracion.database_url)
-    return create_async_engine(db_url, pool_pre_ping=True)
+    return create_async_engine(db_url, pool_pre_ping=True, echo=configuracion.sql_echo)
 
 
 def crear_fabricante_sesion(engine: AsyncEngine) -> async_sessionmaker[AsyncSession]:
