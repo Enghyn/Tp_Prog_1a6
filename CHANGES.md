@@ -446,7 +446,7 @@ Paso │ Agente A (Core / Persistencia) │ Agente B (Seguridad)         │ Age
 ---
 
 ### [C-17] `registro-atomico`
-- **Estado**: `[ ]` pendiente
+- **Estado**: `[x]` completado (archivado 2026-10-31)
 - **Scope**: Auto-registro público con escritura atómica de tres entidades
   - `POST /auth/registro`: un único `UnitOfWork` que crea `Usuario` + `AsignacionRol(CLIENTE)` + `Cliente` (RN-02); un solo `commit` o `rollback` total
   - El hash de contraseña se calcula **antes** de abrir la transacción (no retener conexión durante bcrypt)

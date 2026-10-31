@@ -118,6 +118,70 @@ class RespuestaCambioPassword(BaseModel):
     detail: str = "Contraseña actualizada"
 
 
+class SolicitudRegistro(BaseModel):
+    """
+    Contrato de `POST /auth/registro` (C-17).
+
+    El email se normaliza igual que en el login; el nombre, documento y
+    teléfono se recortan y no pueden quedar vacíos.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    email: EmailStr
+    nombre: str = Field(min_length=1, max_length=120)
+    password: str = Field(min_length=8, max_length=72)
+    documento: str = Field(min_length=1, max_length=40)
+    telefono: str = Field(min_length=1, max_length=40)
+
+    @field_validator("email")
+    @classmethod
+    def normalizar_email(cls, valor: str) -> str:
+        return normalizar_email_valor(valor)
+
+    @field_validator("nombre")
+    @classmethod
+    def limpiar_nombre(cls, valor: str) -> str:
+        recortado = valor.strip()
+        if not recortado:
+            raise ValueError("El nombre no puede estar vacío")
+        return recortado
+
+    @field_validator("documento")
+    @classmethod
+    def limpiar_documento(cls, valor: str) -> str:
+        recortado = valor.strip()
+        if not recortado:
+            raise ValueError("El documento no puede estar vacío")
+        return recortado
+
+    @field_validator("telefono")
+    @classmethod
+    def limpiar_telefono(cls, valor: str) -> str:
+        recortado = valor.strip()
+        if not recortado:
+            raise ValueError("El teléfono no puede estar vacío")
+        return recortado
+
+    @field_validator("password")
+    @classmethod
+    def validar_complejidad(cls, valor: str) -> str:
+        return validar_complejidad_password(valor)
+
+
+class UsuarioRegistrado(BaseModel):
+    """Respuesta del auto-registro (C-17): nunca incluye la contraseña."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    id: int
+    email: str
+    nombre: str
+    activo: bool
+    debe_cambiar_password: bool
+    cliente_id: int
+
+
 class SolicitudAltaUsuario(BaseModel):
     """
     Contrato de `POST /usuarios` (D3).

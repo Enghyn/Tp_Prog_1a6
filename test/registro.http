@@ -1,0 +1,62 @@
+@host = http://localhost:8000
+
+### 1. Registro exitoso: 201
+POST {{host}}/auth/registro
+Content-Type: application/json
+
+{
+  "email": "nuevo@taller.local",
+  "nombre": "Nuevo Cliente",
+  "password": "Password123",
+  "documento": "DOC-REG-HTTP-1",
+  "telefono": "123456"
+}
+
+### 2. Email duplicado: 409 EMAIL_DUPLICADO
+POST {{host}}/auth/registro
+Content-Type: application/json
+
+{
+  "email": "nuevo@taller.local",
+  "nombre": "Otro",
+  "password": "Password123",
+  "documento": "DOC-REG-HTTP-2",
+  "telefono": "123456"
+}
+
+### 3. Documento duplicado: 409 DOCUMENTO_DUPLICADO
+POST {{host}}/auth/registro
+Content-Type: application/json
+
+{
+  "email": "otro@taller.local",
+  "nombre": "Otro",
+  "password": "Password123",
+  "documento": "DOC-REG-HTTP-1",
+  "telefono": "123456"
+}
+
+### 4. Campo extra: 422
+POST {{host}}/auth/registro
+Content-Type: application/json
+
+{
+  "email": "extra@taller.local",
+  "nombre": "Extra",
+  "password": "Password123",
+  "documento": "DOC-REG-HTTP-3",
+  "telefono": "123456",
+  "campo_extra": "x"
+}
+
+### 5. Contrasena invalida: 422
+POST {{host}}/auth/registro
+Content-Type: application/json
+
+{
+  "email": "corta@taller.local",
+  "nombre": "Corta",
+  "password": "corta",
+  "documento": "DOC-REG-HTTP-4",
+  "telefono": "123456"
+}

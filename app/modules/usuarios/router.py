@@ -30,7 +30,9 @@ from app.modules.usuarios.schemas import (
     RespuestaLogout,
     SolicitudAltaUsuario,
     SolicitudAsignacionRol,
+    SolicitudRegistro,
     UsuarioCreado,
+    UsuarioRegistrado,
     UsuarioPublico,
     TokenInfo,
     SolicitudCambioPassword,
@@ -46,6 +48,7 @@ from app.modules.usuarios.service import (
     asignar_rol,
     cambiar_password as cambiar_password_service,
     dar_de_alta_usuario,
+    registrar_cliente,
     obtener_historial_roles,
     revocar_rol,
     consultar_eventos,
@@ -133,6 +136,25 @@ async def logout(
 
     construir_cookie_borrado(response)
     return RespuestaLogout()
+
+
+@router_publico.post("/registro", status_code=201, response_model=UsuarioRegistrado)
+async def registro(
+    solicitud: SolicitudRegistro,
+    request: Request,
+    sesion: Annotated[AsyncSession, Depends(get_session)],
+) -> UsuarioRegistrado:
+    """
+    Auto-registro público (C-17).
+
+    Responde `201` con `UsuarioRegistrado`; `409 EMAIL_DUPLICADO` /
+    `DOCUMENTO_DUPLICADO`; `422 ERROR_VALIDACION` si el contrato no cumple.
+    """
+    return await registrar_cliente(
+        solicitud=solicitud,
+        app_state=request.app.state,
+        sesion=sesion,
+    )
 
 
 @router_autenticado.post(

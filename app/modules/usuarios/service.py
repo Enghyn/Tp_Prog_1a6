@@ -3,8 +3,9 @@ from datetime import datetime, timedelta, timezone
 from typing import Sequence, Any
 import math
 
+from sqlalchemy.exc import IntegrityError
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-
 from app.core.unit_of_work import UnitOfWork
 
 from app.core.configuracion import configuracion
@@ -39,6 +40,7 @@ from app.modules.usuarios.repository import (
     listar_eventos,
 )
 from app.modules.usuarios.models import IntentoAcceso, AsignacionRol, Usuario
+from app.modules.clientes.models import Cliente
 from app.modules.usuarios.schemas import (
     AsignacionRolPublica,
     HistorialRoles,
@@ -47,12 +49,15 @@ from app.modules.usuarios.schemas import (
     RespuestaSesion,
     SolicitudAltaUsuario,
     SolicitudAsignacionRol,
+    SolicitudRegistro,
     UsuarioCreado,
+    UsuarioRegistrado,
     UsuarioPublico,
     TokenInfo,
     EventoPublico,
     normalizar_email_valor,
 )
+from app.modules.usuarios.unit_of_work import RegistroUnitOfWork
 from app.core.paginacion import Page
 
 
@@ -563,3 +568,110 @@ async def iniciar_sesion(
         ),
     )
     return respuesta, token
+
+
+async def registrar_cliente(
+    solicitud: SolicitudRegistro,
+    app_state: Any = None,
+    sesion: AsyncSession | None = None,
+    *,
+    sesion_registro: AsyncSession | None = None,
+) -> UsuarioRegistrado:
+    """
+    Auto-registro público (C-17, RN-02).
+
+    Calcula el hash de la contraseña ANTES de abrir la transacción y crea
+    `Usuario` + `AsignacionRol(CLIENTE)` + `Cliente` en un único
+    `RegistroUnitOfWork`, con rollback total ante cualquier fallo. Registra
+    `USUARIO_AUTO_REGISTRADO` en la misma transacción.
+    """
+    if sesion is None:
+        sesion = sesion_registro
+    if sesion is None and isinstance(app_state, AsyncSession):
+        sesion = app_state
+        app_state = None
+    if sesion is None:
+        raise ValueError("Se requiere una sesión para registrar el cliente")
+
+    email = normalizar_email_valor(solicitud.email)
+    nombre = solicitud.nombre
+    documento = solicitud.documento
+    telefono = solicitud.telefono
+
+    # Hash antes de abrir la transacción (no retener conexión durante bcrypt).
+    password_hash = await hash_password(solicitud.password, app_state)
+    ahora = _ahora()
+
+    async with RegistroUnitOfWork(sesion) as uow:
+        # Pre-chequeo por email.
+        if await buscar_usuario_por_email(sesion, email) is not None:
+            raise ConflictoError("El email ya está registrado", "EMAIL_DUPLICADO")
+
+        # Pre-chequeo por documento.
+        stmt_doc = select(Cliente).where(Cliente.documento == documento)
+        res_doc = await sesion.execute(stmt_doc)
+        if res_doc.scalars().first() is not None:
+            raise ConflictoError("Documento duplicado", "DOCUMENTO_DUPLICADO")
+
+        # Crear Usuario.
+        try:
+            usuario = Usuario(
+                email=email,
+                nombre=nombre,
+                password_hash=password_hash,
+                activo=True,
+                debe_cambiar_password=False,
+            )
+            sesion.add(usuario)
+            await sesion.flush()
+        except IntegrityError:
+            await sesion.rollback()
+            raise ConflictoError("El email ya está registrado", "EMAIL_DUPLICADO")
+
+        # Crear AsignacionRol(CLIENTE).
+        try:
+            await crear_asignacion(
+                sesion,
+                usuario_id=usuario.id,
+                rol="CLIENTE",
+                desde=ahora,
+                vence_en=None,
+                otorgada_por=None,
+            )
+        except IntegrityError:
+            await sesion.rollback()
+            raise ConflictoError("El email ya está registrado", "EMAIL_DUPLICADO")
+
+        # Crear Cliente.
+        try:
+            cliente = Cliente(
+                usuario_id=usuario.id,
+                nombre=nombre,
+                documento=documento,
+                telefono=telefono,
+            )
+            sesion.add(cliente)
+            await sesion.flush()
+        except IntegrityError:
+            await sesion.rollback()
+            raise ConflictoError("Documento duplicado", "DOCUMENTO_DUPLICADO")
+
+        # Auditoría en la misma transacción.
+        await registrar_evento(
+            sesion,
+            actor=email,
+            accion="USUARIO_AUTO_REGISTRADO",
+            cuando=ahora,
+        )
+
+        # Evitar unused uow var warning
+        _ = uow
+
+    return UsuarioRegistrado(
+        id=usuario.id,
+        email=usuario.email,
+        nombre=usuario.nombre,
+        activo=usuario.activo,
+        debe_cambiar_password=usuario.debe_cambiar_password,
+        cliente_id=cliente.id,
+    )
