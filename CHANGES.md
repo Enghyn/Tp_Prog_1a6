@@ -332,7 +332,7 @@ Paso │ Agente A (Core / Persistencia) │ Agente B (Seguridad)         │ Age
 ---
 
 ### [C-11] `password-lifecycle`
-- **Estado**: `[ ]` pendiente
+- **Estado**: `[x]` completado (archivado 2026-10-31)
 - **Scope**: Cambio de contraseña y expiración de sesiones anteriores
   - `POST /auth/cambiar-password`: valida contraseña actual (401 uniforme si falla), hashea en `to_thread`, persiste `password_cambiada_en = now()` sin truncar fracciones y `debe_cambiar_password = False` (RN-07)
   - Invalidación: cualquier JWT con `iat` anterior a `password_cambiada_en` → `401` (reutiliza la verificación de C-09)

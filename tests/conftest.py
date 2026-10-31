@@ -6,6 +6,10 @@ from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sess
 
 # Configurar variables de entorno necesarias para las pruebas
 os.environ.setdefault("JWT_SECRET", "clave-secreta-de-prueba")
+os.environ.setdefault(
+    "TEST_DATABASE_URL",
+    "postgresql+asyncpg://postgres:postgres@localhost:5432/taller_mecanico_test",
+)
 
 from main import app
 from app.core.configuracion import configuracion
@@ -94,8 +98,9 @@ async def seed_session_factory():
 async def contexto_auth():
     """
     Fixture para probar módulos de autenticación y auditoría independiente contra PostgreSQL real.
-    Sobrescribe get_session y obtener_sesion_auditoria con sesiones ligadas a la misma
-    conexión externa bajo create_savepoint para permitir commit() y rollback aislado.
+    Sobrescribe get_session, obtener_sesion_auditoria y obtener_sesion_cambio_password
+    con sesiones ligadas a la misma conexión externa bajo create_savepoint para permitir
+    commit() y rollback aislado.
     """
     test_db_url = os.getenv("TEST_DATABASE_URL", str(configuracion.database_url))
     engine = create_async_engine(test_db_url, pool_pre_ping=True)
@@ -111,14 +116,27 @@ async def contexto_auth():
             async def override_get_session():
                 async with session_factory() as session:
                     yield session
+                    await session.commit()
 
             async def override_obtener_sesion_auditoria():
                 async with session_factory() as session:
                     yield session
+                    await session.commit()
+
+            async def override_obtener_sesion_cambio_password():
+                async with session_factory() as session:
+                    yield session
+                    await session.commit()
 
             try:
-                from app.modules.usuarios.repository import obtener_sesion_auditoria
+                from app.modules.usuarios.repository import (
+                    obtener_sesion_auditoria,
+                    obtener_sesion_cambio_password,
+                )
                 app.dependency_overrides[obtener_sesion_auditoria] = override_obtener_sesion_auditoria
+                app.dependency_overrides[obtener_sesion_cambio_password] = (
+                    override_obtener_sesion_cambio_password
+                )
             except ImportError:
                 pass
 
@@ -130,8 +148,12 @@ async def contexto_auth():
             finally:
                 app.dependency_overrides.pop(get_session, None)
                 try:
-                    from app.modules.usuarios.repository import obtener_sesion_auditoria
+                    from app.modules.usuarios.repository import (
+                        obtener_sesion_auditoria,
+                        obtener_sesion_cambio_password,
+                    )
                     app.dependency_overrides.pop(obtener_sesion_auditoria, None)
+                    app.dependency_overrides.pop(obtener_sesion_cambio_password, None)
                 except ImportError:
                     pass
                 await trans.rollback()

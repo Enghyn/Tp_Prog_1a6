@@ -11,6 +11,8 @@ from app.core.seguridad import (
     crear_token_acceso,
     verify_password_o_dummy,
     generar_hash_ficticio,
+    hash_password,
+    verify_password_async,
 )
 from app.modules.usuarios.repository import (
     registrar_intento,
@@ -18,9 +20,15 @@ from app.modules.usuarios.repository import (
     buscar_usuario_por_email,
     contar_intentos_fallidos,
     obtener_ultimos_fallos_ventana,
+    actualizar_password,
 )
 from app.modules.usuarios.models import IntentoAcceso, AsignacionRol, Usuario
-from app.modules.usuarios.schemas import RespuestaSesion, UsuarioPublico, TokenInfo
+from app.modules.usuarios.schemas import (
+    RespuestaCambioPassword,
+    RespuestaSesion,
+    UsuarioPublico,
+    TokenInfo,
+)
 
 
 @dataclass(frozen=True)
@@ -63,6 +71,74 @@ async def auditar_acceso(
             accion=registro.accion,
             cuando=instante,
         )
+
+
+def credenciales_invalidas() -> NoAutenticadoError:
+    """
+    Construye el `401` uniforme compartido por login y cambio de contraseña (D9).
+
+    No distingue causas: ni la existencia del usuario ni cuál de las dos
+    contraseñas falló se revelan en el cuerpo.
+    """
+    return NoAutenticadoError("Credenciales inválidas", "CREDENCIALES_INVALIDAS")
+
+
+def _ahora() -> datetime:
+    """
+    Reloj inyectable del módulo (D3).
+
+    Se captura después del hash y antes del UPDATE, de modo que cualquier token
+    emitido mientras se calculaba la contraseña nueva quede invalidado (RN-07).
+    """
+    return datetime.now(timezone.utc)
+
+
+async def cambiar_password(
+    usuario: Usuario,
+    password_actual: str,
+    password_nueva: str,
+    ip: str,
+    sesion_cambio: AsyncSession,
+    sesion_auditoria: AsyncSession,
+    app_state: Any = None,
+) -> RespuestaCambioPassword:
+    """
+    Cambio de contraseña autenticado (D3): verificar → hashear → persistir → auditar.
+
+    La sesión `sesion_cambio` es dedicada (D4) porque la del request ya tiene una
+    transacción autobegin. `actualizar_password` no commitea: el bloque `begin()`
+    es el límite transaccional local hasta que C-14 introduzca el UnitOfWork.
+    """
+    if not await verify_password_async(
+        password_actual, usuario.password_hash, app_state
+    ):
+        raise credenciales_invalidas()
+
+    nuevo_hash = await hash_password(password_nueva, app_state)
+    ahora = _ahora()
+
+    # TODO(C-14): reemplazar este límite transaccional local por UnitOfWork.__aexit__.
+    async with sesion_cambio.begin():
+        await actualizar_password(
+            sesion_cambio,
+            usuario_id=usuario.id,
+            password_hash=nuevo_hash,
+            cambiada_en=ahora,
+        )
+
+    await auditar_acceso(
+        sesion_auditoria,
+        RegistroAcceso(
+            email=usuario.email,
+            ip=ip,
+            actor=usuario.email,
+            accion="PASSWORD_CAMBIADA",
+            exito=None,
+            cuando=ahora,
+        ),
+    )
+
+    return RespuestaCambioPassword()
 
 
 def calcular_retry_after(
@@ -189,7 +265,7 @@ async def iniciar_sesion(
                 cuando=ahora,
             ),
         )
-        raise NoAutenticadoError("Credenciales inválidas", "CREDENCIALES_INVALIDAS")
+        raise credenciales_invalidas()
 
     # 4. Éxito: emisión y auditoría independiente
     roles_vigentes = obtener_roles_vigentes(usuario.asignaciones, ahora)

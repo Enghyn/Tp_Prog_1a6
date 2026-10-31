@@ -68,9 +68,19 @@ def create_app() -> FastAPI:
 
     @app.exception_handler(RequestValidationError)
     async def manejador_error_validacion(request: Request, exc: RequestValidationError):
+        # D10: no repetir secretos. Cada error expone solo loc/msg/type;
+        # `input` (valor enviado o body completo) y `ctx` se descartan.
+        errores = [
+            {
+                "loc": error.get("loc", ()),
+                "msg": error.get("msg", ""),
+                "type": error.get("type", ""),
+            }
+            for error in exc.errors()
+        ]
         return JSONResponse(
             status_code=422,
-            content={"detail": exc.errors(), "codigo": "ERROR_VALIDACION"},
+            content={"detail": errores, "codigo": "ERROR_VALIDACION"},
         )
 
     @app.exception_handler(IntegrityError)

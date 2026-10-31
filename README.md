@@ -77,6 +77,28 @@ El sistema gestiona la autenticación mediante JSON Web Tokens (JWT) emitidos en
   - Puede fijarse explícitamente mediante `COOKIE_SECURE=true` o `COOKIE_SECURE=false`.
 - **Límite de intentos (RN-08)**: Si se registran `LOGIN_MAX_INTENTOS` fallos para un `(email, ip)` en `LOGIN_VENTANA_SEG` segundos, la siguiente petición responde `429 Too Many Requests` con la cabecera `Retry-After` sin calcular hashes bcrypt.
 
+### Cambio de contraseña
+
+`POST /auth/cambiar-password` (requiere cookie `access_token` válida) permite cambiar la contraseña del usuario autenticado:
+
+```http
+POST /auth/cambiar-password
+Content-Type: application/json
+
+{"password_actual": "Provisoria1", "password_nueva": "NuevaClave2"}
+```
+
+| Caso | Código | Cuerpo |
+|------|--------|--------|
+| Éxito | `200` | `{"detail": "Contraseña actualizada"}` |
+| `password_actual` incorrecta o sin sesión | `401` | `{"detail": "Credenciales inválidas", "codigo": "CREDENCIALES_INVALIDAS"}` |
+| Contrato o política incumplidos | `422` | `{"detail": [{"loc": ..., "msg": ..., "type": ...}], "codigo": "ERROR_VALIDACION"}` |
+
+- `password_nueva` debe tener entre 8 y 72 caracteres, al menos una mayúscula ASCII, una minúscula ASCII y un dígito, y ser distinta de `password_actual`.
+- El `200` **no** renueva la cookie: por RN-07 el token usado queda inválido. Hay que volver a `POST /auth/login` con la contraseña nueva.
+- El `422` no repite los valores enviados (`input`/`ctx` se omiten) para no filtrar contraseñas.
+- Casos manuales: [`test/auth.http`](test/auth.http).
+
 ### Credenciales de desarrollo
 
 | Email | Rol | Contraseña |

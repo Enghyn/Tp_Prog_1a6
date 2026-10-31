@@ -1,0 +1,62 @@
+@host = http://localhost:8000
+@email = cliente@taller.local
+@password_actual = Cliente123!
+@password_nueva = Cliente456!
+
+### 1. Login: obtiene la cookie access_token
+POST {{host}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "{{email}}",
+  "password": "{{password_actual}}"
+}
+
+### 2. Cambio exitoso: 200 sin Set-Cookie de access_token
+POST {{host}}/auth/cambiar-password
+Content-Type: application/json
+
+{
+  "password_actual": "{{password_actual}}",
+  "password_nueva": "{{password_nueva}}"
+}
+
+### 3. Reutilizar el token viejo en una ruta protegida: 401 por RN-07
+GET {{host}}/auth/yo
+
+### 4. Contraseña actual incorrecta: 401 uniforme
+POST {{host}}/auth/cambiar-password
+Content-Type: application/json
+
+{
+  "password_actual": "Incorrecta1",
+  "password_nueva": "OtraClave9"
+}
+
+### 5. Contraseña nueva fuera de rango: 422 sin repetir contraseñas
+POST {{host}}/auth/cambiar-password
+Content-Type: application/json
+
+{
+  "password_actual": "{{password_nueva}}",
+  "password_nueva": "corta"
+}
+
+### 6. Campo no declarado: 422
+POST {{host}}/auth/cambiar-password
+Content-Type: application/json
+
+{
+  "password_actual": "{{password_nueva}}",
+  "password_nueva": "OtraClave9",
+  "campo_extra": "x"
+}
+
+### 7. Reautenticación con la contraseña nueva
+POST {{host}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "{{email}}",
+  "password": "{{password_nueva}}"
+}

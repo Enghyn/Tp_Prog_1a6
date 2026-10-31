@@ -1,11 +1,12 @@
 from datetime import datetime, timezone
 from typing import AsyncGenerator, Sequence
 from fastapi import Request
-from sqlalchemy import select, func, or_
+from sqlalchemy import select, func, or_, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.core.database import session_maker
+from app.core.errors import NoAutenticadoError
 from app.modules.usuarios.models import Usuario, AsignacionRol, IntentoAcceso, EventoSeguridad
 
 
@@ -17,6 +18,54 @@ async def obtener_sesion_auditoria(request: Request) -> AsyncGenerator[AsyncSess
     maker = getattr(request.app.state, "session_maker", None) or session_maker
     async with maker() as sesion:
         yield sesion
+
+
+async def obtener_sesion_cambio_password(
+    request: Request,
+) -> AsyncGenerator[AsyncSession, None]:
+    """
+    Dependency de una sesión dedicada para el cambio de contraseña (D4).
+
+    La sesión del request ya tiene una transacción autobegin abierta por
+    `obtener_usuario_actual`, por lo que el service no puede hacer
+    `async with sesion.begin()` sobre ella. Esta sesión no comparte identidad
+    ni transacción con la del request.
+
+    TODO(C-14): reemplazar este límite transaccional local por el UnitOfWork.
+    """
+    maker = getattr(request.app.state, "session_maker", None) or session_maker
+    async with maker() as sesion:
+        yield sesion
+
+
+async def actualizar_password(
+    sesion: AsyncSession,
+    usuario_id: int,
+    password_hash: str,
+    cambiada_en: datetime,
+) -> int:
+    """
+    Actualiza atómicamente hash, timestamp y bandera del usuario (D4, RN-07).
+
+    Un único `UPDATE ... WHERE id = :id`; verifica `rowcount == 1` y lanza el
+    `401` uniforme si la fila desapareció. No hace `commit()` ni cierra la
+    sesión: el límite transaccional lo administra quien llama.
+    """
+    stmt = (
+        update(Usuario)
+        .where(Usuario.id == usuario_id)
+        .values(
+            password_hash=password_hash,
+            password_cambiada_en=cambiada_en,
+            debe_cambiar_password=False,
+        )
+    )
+    resultado = await sesion.execute(stmt)
+    filas = resultado.rowcount
+    if filas != 1:
+        raise NoAutenticadoError("Credenciales inválidas", "CREDENCIALES_INVALIDAS")
+    await sesion.flush()
+    return filas
 
 
 async def registrar_intento(

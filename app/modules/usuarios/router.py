@@ -12,18 +12,24 @@ from app.core.seguridad import (
     decodificar_token_acceso,
 )
 from app.modules.usuarios.models import Usuario
-from app.modules.usuarios.repository import obtener_sesion_auditoria
+from app.modules.usuarios.repository import (
+    obtener_sesion_auditoria,
+    obtener_sesion_cambio_password,
+)
 from app.modules.usuarios.schemas import (
     SolicitudLogin,
     RespuestaSesion,
     RespuestaLogout,
     UsuarioPublico,
     TokenInfo,
+    SolicitudCambioPassword,
+    RespuestaCambioPassword,
 )
 from app.modules.usuarios.service import (
     iniciar_sesion,
     auditar_acceso,
     RegistroAcceso,
+    cambiar_password as cambiar_password_service,
 )
 
 router_publico = APIRouter(prefix="/auth", tags=["Autenticación"])
@@ -91,6 +97,37 @@ async def logout(
 
     construir_cookie_borrado(response)
     return RespuestaLogout()
+
+
+@router_autenticado.post(
+    "/cambiar-password", response_model=RespuestaCambioPassword
+)
+async def cambiar_password(
+    solicitud: SolicitudCambioPassword,
+    request: Request,
+    sesion_actual: Annotated[SesionActual, Depends(obtener_usuario_actual)],
+    sesion_cambio: Annotated[
+        AsyncSession, Depends(obtener_sesion_cambio_password)
+    ],
+    sesion_auditoria: Annotated[AsyncSession, Depends(obtener_sesion_auditoria)],
+) -> RespuestaCambioPassword:
+    """
+    Cambia la contraseña del usuario autenticado (C-11, D2–D7).
+
+    Exige sesión válida; la contraseña actual incorrecta responde `401`
+    uniforme. El `200` no reemite la cookie: por RN-07 el token usado queda
+    inválido y el cliente debe volver a autenticarse.
+    """
+    ip = request.client.host if request.client else "desconocida"
+    return await cambiar_password_service(
+        usuario=sesion_actual.usuario,
+        password_actual=solicitud.password_actual,
+        password_nueva=solicitud.password_nueva,
+        ip=ip,
+        sesion_cambio=sesion_cambio,
+        sesion_auditoria=sesion_auditoria,
+        app_state=request.app.state,
+    )
 
 
 @router_autenticado.get("/yo", response_model=RespuestaSesion)
