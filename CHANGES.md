@@ -464,7 +464,7 @@ Paso │ Agente A (Core / Persistencia) │ Agente B (Seguridad)         │ Age
 ---
 
 ### [C-18] `ordenes-apertura-consulta`
-- **Estado**: `[ ]` pendiente
+- **Estado**: `[x]` completado
 - **Scope**: Apertura de órdenes con precio y total calculados en servidor + consultas de órdenes
   - `app/modules/ordenes/`: `OrdenRepository`, `ItemOrdenRepository`, `EstadoOrdenRepository` (sólo lectura), `HistorialEstadoOrdenRepository`, uow, service, router
   - Schemas de entrada sin `precio_unitario` ni `total` (`extra="forbid"`); ítems sin repetir y `cantidad > 0` → `422` (RN-10)

@@ -51,6 +51,12 @@ class OrdenTrabajo(SQLModel, table=True):
         back_populates="ordenes",
         sa_relationship_kwargs={"lazy": "raise", "foreign_keys": "[OrdenTrabajo.estado]"},
     )
+    vehiculo: Optional["Vehiculo"] = Relationship(
+        sa_relationship_kwargs={"lazy": "raise", "foreign_keys": "[OrdenTrabajo.vehiculo_id]"},
+    )
+    mecanico: Optional["Usuario"] = Relationship(
+        sa_relationship_kwargs={"lazy": "raise", "foreign_keys": "[OrdenTrabajo.mecanico_id]"},
+    )
     items: List["ItemOrden"] = Relationship(
         back_populates="orden",
         sa_relationship_kwargs={
@@ -82,6 +88,10 @@ class ItemOrden(SQLModel, table=True):
         sa_relationship_kwargs={"lazy": "raise"},
     )
 
+    repuesto: Optional["Repuesto"] = Relationship(
+        sa_relationship_kwargs={"lazy": "raise", "foreign_keys": "[ItemOrden.repuesto_id]"},
+    )
+
     __table_args__ = (
         UniqueConstraint("orden_id", "repuesto_id", name="uq_item_orden_repuesto"),
         CheckConstraint("cantidad > 0", name="ck_item_cantidad_positiva"),
@@ -111,3 +121,6 @@ class HistorialEstadoOrden(SQLModel, table=True):
         back_populates="historial_hasta",
         sa_relationship_kwargs={"lazy": "raise", "foreign_keys": "[HistorialEstadoOrden.hasta_estado]"},
     )
+
+
+# La relación cross-módulo se resuelve por nombre en el registro de mappers.

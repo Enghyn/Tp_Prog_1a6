@@ -10,6 +10,7 @@ from sqlalchemy.exc import IntegrityError
 from app.modules.health import router as health_router
 from app.modules.usuarios import router as usuarios_router
 from app.modules import clientes as clientes_router
+from app.modules.ordenes import router as ordenes_router
 from app.modules import repuestos as repuestos_router
 from app.core.dependencies import requiere_password_actualizada
 from app.core.errors import ErrorAplicacion, DemasiadasPeticionesError
@@ -36,6 +37,7 @@ router_protegido.include_router(usuarios_router.router_autenticado)
 router_protegido.include_router(usuarios_router.router_admin_usuarios)
 router_protegido.include_router(usuarios_router.router_admin_eventos)
 router_protegido.include_router(clientes_router.router_autenticado)
+router_protegido.include_router(ordenes_router.router_autenticado)
 router_protegido.include_router(repuestos_router.router_autenticado)
 
 
