@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.core.database import session_maker
+from app.core.repository import BaseRepository
 from app.core.errors import NoAutenticadoError
 from app.modules.usuarios.models import Usuario, AsignacionRol, IntentoAcceso, EventoSeguridad
 
@@ -391,3 +392,22 @@ async def listar_eventos(
     )
     resultado = await sesion.execute(stmt)
     return resultado.scalars().all()
+
+
+# --- Pilot repository classes (C-13) ---
+
+class UsuarioRepository(BaseRepository[Usuario]):
+    def __init__(self, session: AsyncSession) -> None:
+        super().__init__(session, Usuario)
+
+class AsignacionRolRepository(BaseRepository[AsignacionRol]):
+    def __init__(self, session: AsyncSession) -> None:
+        super().__init__(session, AsignacionRol)
+
+class IntentoAccesoRepository(BaseRepository[IntentoAcceso]):
+    def __init__(self, session: AsyncSession) -> None:
+        super().__init__(session, IntentoAcceso)
+
+class EventoSeguridadRepository(BaseRepository[EventoSeguridad]):
+    def __init__(self, session: AsyncSession) -> None:
+        super().__init__(session, EventoSeguridad)

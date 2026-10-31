@@ -372,7 +372,7 @@ Paso │ Agente A (Core / Persistencia) │ Agente B (Seguridad)         │ Age
 ## FASE 5 — Capítulo 6: Repositorios, Unit of Work y transacciones
 
 ### [C-13] `repositories`
-- **Estado**: `[ ]` pendiente
+- **Estado**: `[x]` completado
 - **Scope**: Jerarquía de repositorios genéricos + repositorios concretos de identidad
   - `app/core/repository.py`: `BaseRepository[T]` con `get_by_id`, `get_all`, `count`, `add`, `update`, `delete`; `add`/`update` ejecutan `flush()` y **nunca** `commit()`
   - `SoftDeleteRepository[T]`: filtra `borrado_en IS NULL` por defecto, agrega `get_by_id_including_deleted` y `soft_delete()`
