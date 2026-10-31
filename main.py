@@ -1,7 +1,7 @@
 import logging
 import asyncio
 
-from fastapi import FastAPI, Request
+from fastapi import APIRouter, Depends, FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from contextlib import asynccontextmanager
@@ -9,6 +9,7 @@ from sqlalchemy.exc import IntegrityError
 
 from app.modules.health import router as health_router
 from app.modules.usuarios import router as usuarios_router
+from app.core.dependencies import requiere_password_actualizada
 from app.core.errors import ErrorAplicacion, DemasiadasPeticionesError
 from app.core.seguridad import generar_hash_ficticio
 from app.core.configuracion import configuracion
@@ -19,6 +20,17 @@ logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
 )
+
+
+# Dos grupos de rutas (D5). El público no exige sesión; el protegido exige
+# sesión válida y bloquea a usuarios con contraseña pendiente en toda ruta
+# que no sea /auth/* ni /health/* (exención por prefijo, RN-06).
+router_publico = APIRouter()
+router_protegido = APIRouter(dependencies=[Depends(requiere_password_actualizada)])
+
+router_publico.include_router(health_router.router)
+router_publico.include_router(usuarios_router.router_publico)
+router_protegido.include_router(usuarios_router.router_autenticado)
 
 
 @asynccontextmanager
@@ -68,8 +80,8 @@ def create_app() -> FastAPI:
             content={"detail": "Conflicto en la operación", "codigo": "CONFLICTO_INTEGRIDAD"},
         )
 
-    app.include_router(health_router.router)
-    app.include_router(usuarios_router.router)
+    app.include_router(router_publico)
+    app.include_router(router_protegido)
 
     return app
 

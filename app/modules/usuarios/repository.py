@@ -1,12 +1,12 @@
 from datetime import datetime, timezone
 from typing import AsyncGenerator, Sequence
 from fastapi import Request
-from sqlalchemy import select, func
+from sqlalchemy import select, func, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.core.database import session_maker
-from app.modules.usuarios.models import Usuario, IntentoAcceso, EventoSeguridad
+from app.modules.usuarios.models import Usuario, AsignacionRol, IntentoAcceso, EventoSeguridad
 
 
 async def obtener_sesion_auditoria(request: Request) -> AsyncGenerator[AsyncSession, None]:
@@ -61,6 +61,34 @@ async def buscar_usuario_por_email(sesion: AsyncSession, email: str) -> Usuario 
     )
     resultado = await sesion.execute(stmt)
     return resultado.scalars().first()
+
+
+async def obtener_roles_vigentes_por_usuario(
+    sesion: AsyncSession,
+    usuario_id: int,
+) -> list[str]:
+    """
+    Devuelve los roles vigentes del usuario leídos de `asignacion_rol` (RN-04, D2).
+
+    `ahora` se calcula en Python una sola vez por llamada y se envía como
+    parámetro: dentro de una transacción externa el `now()` de PostgreSQL
+    devolvería el inicio de la transacción y congelaría los tests de vencimiento.
+    La comparación es estricta (`vence_en > ahora`): una asignación que vence
+    exactamente en el instante evaluado ya no autoriza.
+    """
+    ahora = datetime.now(timezone.utc)
+    stmt = (
+        select(AsignacionRol.rol)
+        .where(
+            AsignacionRol.usuario_id == usuario_id,
+            AsignacionRol.revocada_en.is_(None),
+            or_(AsignacionRol.vence_en.is_(None), AsignacionRol.vence_en > ahora),
+        )
+        .distinct()
+        .order_by(AsignacionRol.rol)
+    )
+    resultado = await sesion.execute(stmt)
+    return list(resultado.scalars().all())
 
 
 async def contar_intentos_fallidos(

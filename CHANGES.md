@@ -314,7 +314,7 @@ Paso │ Agente A (Core / Persistencia) │ Agente B (Seguridad)         │ Age
 ---
 
 ### [C-10] `rbac-route-groups`
-- **Estado**: `[ ]` pendiente
+- **Estado**: `[x]` completado
 - **Scope**: Autorización por roles vigentes en base de datos + separación de grupos de rutas
   - `app/core/dependencies.py`: `get_roles_vigentes(usuario_id)` consulta `asignacion_rol` con `revocada_en IS NULL AND (vence_en IS NULL OR vence_en > now())` **en cada request** (RN-04); los roles del JWT se ignoran para decidir
   - `require_roles(*roles)` factory: sin credencial → `401`, con credencial sin rol → `403`; decorador/dependencia reutilizable por router

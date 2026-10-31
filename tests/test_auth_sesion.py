@@ -211,19 +211,25 @@ async def test_get_auth_yo_exitoso_y_rn04_roles_vigentes(mock_sesiones_auth):
     )
     ses_dom.get = AsyncMock(return_value=usuario)
 
-    # El token tiene rol "HACKER" inyectado, pero la base manda (RN-04)
+    # El token tiene rol "HACKER" inyectado, pero la base manda (RN-04).
+    # La consulta de roles vive ahora en el repositorio (D3); se simula su
+    # resultado para este test con una sesión mockeada.
     token = crear_token_acceso(usuario_id=5, roles=["HACKER"], iat=ahora)
-    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
-        ac.cookies.set("access_token", token)
-        resp = await ac.get("/auth/yo")
-        assert resp.status_code == 200
-        data = resp.json()
-        assert data["usuario"]["id"] == 5
-        assert data["usuario"]["email"] == "empleado@example.com"
-        assert "password_hash" not in data["usuario"]
-        # Debe contener sólo el rol vigente en base, sin "ADMIN" (revocado) y sin "HACKER" (del token)
-        assert data["roles"] == ["RECEPCION"]
-        assert "token" in data
+    with patch(
+        "app.modules.usuarios.router.get_roles_vigentes",
+        new=AsyncMock(return_value=["RECEPCION"]),
+    ):
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
+            ac.cookies.set("access_token", token)
+            resp = await ac.get("/auth/yo")
+            assert resp.status_code == 200
+            data = resp.json()
+            assert data["usuario"]["id"] == 5
+            assert data["usuario"]["email"] == "empleado@example.com"
+            assert "password_hash" not in data["usuario"]
+            # Debe contener sólo el rol vigente en base, sin "ADMIN" (revocado) y sin "HACKER" (del token)
+            assert data["roles"] == ["RECEPCION"]
+            assert "token" in data
 
 
 @pytest.mark.asyncio
@@ -255,10 +261,14 @@ async def test_get_auth_yo_rn07_invalida_token_previo_a_cambio_password(mock_ses
 
     # Token emitido después del cambio sobrevive
     token_nuevo = crear_token_acceso(usuario_id=1, roles=[], iat=ahora)
-    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
-        ac.cookies.set("access_token", token_nuevo)
-        resp = await ac.get("/auth/yo")
-        assert resp.status_code == 200
+    with patch(
+        "app.modules.usuarios.router.get_roles_vigentes",
+        new=AsyncMock(return_value=[]),
+    ):
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
+            ac.cookies.set("access_token", token_nuevo)
+            resp = await ac.get("/auth/yo")
+            assert resp.status_code == 200
 
 
 @pytest.mark.asyncio

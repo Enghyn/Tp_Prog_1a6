@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, Request, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_session
-from app.core.dependencies import SesionActual, obtener_usuario_actual
+from app.core.dependencies import SesionActual, get_roles_vigentes, obtener_usuario_actual
 from app.core.seguridad import (
     construir_cookie_sesion,
     construir_cookie_borrado,
@@ -22,15 +22,15 @@ from app.modules.usuarios.schemas import (
 )
 from app.modules.usuarios.service import (
     iniciar_sesion,
-    obtener_roles_vigentes,
     auditar_acceso,
     RegistroAcceso,
 )
 
-router = APIRouter(prefix="/auth", tags=["Autenticación"])
+router_publico = APIRouter(prefix="/auth", tags=["Autenticación"])
+router_autenticado = APIRouter(prefix="/auth", tags=["Autenticación"])
 
 
-@router.post("/login", response_model=RespuestaSesion)
+@router_publico.post("/login", response_model=RespuestaSesion)
 async def login(
     solicitud: SolicitudLogin,
     request: Request,
@@ -55,7 +55,7 @@ async def login(
     return respuesta
 
 
-@router.post("/logout", response_model=RespuestaLogout)
+@router_publico.post("/logout", response_model=RespuestaLogout)
 async def logout(
     request: Request,
     response: Response,
@@ -93,17 +93,17 @@ async def logout(
     return RespuestaLogout()
 
 
-@router.get("/yo", response_model=RespuestaSesion)
+@router_autenticado.get("/yo", response_model=RespuestaSesion)
 async def obtener_sesion_yo(
     sesion_actual: Annotated[SesionActual, Depends(obtener_usuario_actual)],
+    sesion: Annotated[AsyncSession, Depends(get_session)],
 ) -> RespuestaSesion:
     """
     Consulta de la sesión actual (D11, D15, RN-04).
     Relee los roles vigentes en la base de datos sin confiar en los claims del token.
     """
     usuario = sesion_actual.usuario
-    ahora = datetime.now(timezone.utc)
-    roles_vigentes = obtener_roles_vigentes(usuario.asignaciones, ahora)
+    roles_vigentes = await get_roles_vigentes(sesion, usuario.id)
 
     return RespuestaSesion(
         usuario=UsuarioPublico(
