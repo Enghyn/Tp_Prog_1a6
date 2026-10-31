@@ -6,7 +6,12 @@ import math
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.configuracion import configuracion
-from app.core.errors import NoAutenticadoError, DemasiadasPeticionesError
+from app.core.errors import (
+    ConflictoError,
+    DemasiadasPeticionesError,
+    NoAutenticadoError,
+    NoEncontradoError,
+)
 from app.core.seguridad import (
     crear_token_acceso,
     verify_password_o_dummy,
@@ -17,17 +22,29 @@ from app.core.seguridad import (
 from app.modules.usuarios.repository import (
     registrar_intento,
     registrar_evento,
+    buscar_asignacion_abierta,
     buscar_usuario_por_email,
+    cerrar_asignacion,
+    contar_admins_vigentes,
     contar_intentos_fallidos,
     obtener_ultimos_fallos_ventana,
     actualizar_password,
+    crear_asignacion,
+    crear_usuario,
+    listar_asignaciones,
 )
 from app.modules.usuarios.models import IntentoAcceso, AsignacionRol, Usuario
 from app.modules.usuarios.schemas import (
+    AsignacionRolPublica,
+    HistorialRoles,
     RespuestaCambioPassword,
     RespuestaSesion,
+    SolicitudAltaUsuario,
+    SolicitudAsignacionRol,
+    UsuarioCreado,
     UsuarioPublico,
     TokenInfo,
+    normalizar_email_valor,
 )
 
 
@@ -141,6 +158,180 @@ async def cambiar_password(
     return RespuestaCambioPassword()
 
 
+async def _auditar_operacion(
+    sesion_auditoria: AsyncSession,
+    *,
+    email: str,
+    ip: str,
+    actor: str,
+    accion: str,
+    cuando: datetime,
+) -> None:
+    """
+    Helper único de auditoría de las operaciones administrativas (D9, task 7.5).
+
+    `exito=None` evita escribir en `intento_acceso`: estos eventos no son
+    intentos de login.
+    """
+    await auditar_acceso(
+        sesion_auditoria,
+        RegistroAcceso(
+            email=email,
+            ip=ip,
+            actor=actor,
+            accion=accion,
+            exito=None,
+            cuando=cuando,
+        ),
+    )
+
+
+async def dar_de_alta_usuario(
+    *,
+    solicitud: SolicitudAltaUsuario,
+    admin: Usuario,
+    ip: str,
+    sesion_admin: AsyncSession,
+    sesion_auditoria: AsyncSession,
+    app_state: Any = None,
+) -> UsuarioCreado:
+    """
+    Alta de personal (D3, D4): pre-chequeo de email → hash → escritura → auditoría.
+
+    El hash bcrypt corre fuera del bloque transaccional para no retener la
+    transacción durante el trabajo de CPU. La auditoría va después del commit de
+    dominio, en su propia transacción (D2).
+    """
+    email = normalizar_email_valor(solicitud.email)
+    password_hash = await hash_password(solicitud.password, app_state)
+    ahora = _ahora()
+
+    # TODO(C-14): reemplazar este límite transaccional local por UnitOfWork.__aexit__.
+    async with sesion_admin.begin():
+        if await buscar_usuario_por_email(sesion_admin, email) is not None:
+            raise ConflictoError("El email ya está registrado", "EMAIL_DUPLICADO")
+        usuario = await crear_usuario(
+            sesion_admin,
+            email=email,
+            nombre=solicitud.nombre,
+            password_hash=password_hash,
+        )
+
+    await _auditar_operacion(
+        sesion_auditoria,
+        email=email,
+        ip=ip,
+        actor=admin.email,
+        accion="USUARIO_CREADO",
+        cuando=ahora,
+    )
+
+    return UsuarioCreado(
+        id=usuario.id,
+        email=usuario.email,
+        nombre=usuario.nombre,
+        activo=usuario.activo,
+        debe_cambiar_password=usuario.debe_cambiar_password,
+    )
+
+
+def _publicar_asignacion(
+    asignacion: AsignacionRol,
+    ahora: datetime,
+) -> AsignacionRolPublica:
+    """Proyección única de `AsignacionRol` a la vista pública (D5, task 5.9)."""
+    return AsignacionRolPublica(
+        id=asignacion.id,
+        rol=asignacion.rol,
+        desde=asignacion.desde,
+        vence_en=asignacion.vence_en,
+        revocada_en=asignacion.revocada_en,
+        otorgada_por=asignacion.otorgada_por,
+        vigente=es_asignacion_vigente(asignacion, ahora),
+    )
+
+
+async def asignar_rol(
+    *,
+    usuario_id: int,
+    solicitud: SolicitudAsignacionRol,
+    admin: Usuario,
+    ip: str,
+    sesion_admin: AsyncSession,
+    sesion_auditoria: AsyncSession,
+) -> AsignacionRolPublica:
+    """
+    Asignación de rol con vencimiento opcional (D6).
+
+    Una única transacción de dominio: verificación del usuario, cierre de la
+    asignación vencida (el índice parcial no la excluye), `INSERT` de la fila
+    nueva y `flush()`. La auditoría va después del commit (D2, D9).
+    """
+    ahora = _ahora()
+
+    # TODO(C-14): reemplazar este límite transaccional local por UnitOfWork.__aexit__.
+    async with sesion_admin.begin():
+        usuario = await sesion_admin.get(Usuario, usuario_id)
+        if usuario is None:
+            raise NoEncontradoError("Usuario no encontrado", "USUARIO_NO_ENCONTRADO")
+
+        abierta = await buscar_asignacion_abierta(
+            sesion_admin, usuario_id, solicitud.rol
+        )
+        if abierta is not None:
+            if es_asignacion_vigente(abierta, ahora):
+                raise ConflictoError(
+                    "El usuario ya tiene ese rol vigente", "ROL_YA_ASIGNADO"
+                )
+            await cerrar_asignacion(sesion_admin, abierta.id, ahora)
+
+        asignacion = await crear_asignacion(
+            sesion_admin,
+            usuario_id=usuario_id,
+            rol=solicitud.rol,
+            desde=ahora,
+            vence_en=solicitud.vence_en,
+            otorgada_por=admin.id,
+        )
+
+    await _auditar_operacion(
+        sesion_auditoria,
+        email=usuario.email,
+        ip=ip,
+        actor=admin.email,
+        accion="ROL_ASIGNADO",
+        cuando=ahora,
+    )
+
+    return _publicar_asignacion(asignacion, ahora)
+
+
+async def obtener_historial_roles(
+    sesion: AsyncSession,
+    usuario_id: int,
+) -> HistorialRoles:
+    """
+    Historial completo de asignaciones de un usuario (D5).
+
+    `vigente` se calcula con un único `ahora` por request; `404` si el usuario
+    no existe (no se confunde "sin roles" con "usuario inexistente").
+    """
+    usuario = await sesion.get(Usuario, usuario_id)
+    if usuario is None:
+        raise NoEncontradoError("Usuario no encontrado", "USUARIO_NO_ENCONTRADO")
+
+    ahora = _ahora()
+    asignaciones = await listar_asignaciones(sesion, usuario_id)
+
+    return HistorialRoles(
+        usuario_id=usuario_id,
+        asignaciones=[
+            _publicar_asignacion(asignacion, ahora)
+            for asignacion in asignaciones
+        ],
+    )
+
+
 def calcular_retry_after(
     fallos_ventana: Sequence[IntentoAcceso],
     ahora: datetime,
@@ -170,30 +361,42 @@ def calcular_retry_after(
     return retry_after
 
 
+def es_asignacion_vigente(asignacion: AsignacionRol, ahora: datetime) -> bool:
+    """
+    Predicado único de vigencia de una asignación (RN-04, D5).
+
+    `revocada_en IS NULL` y (`vence_en IS NULL` o `vence_en > ahora`). La
+    comparación es estricta: una asignación que vence exactamente en el
+    instante evaluado ya no autoriza. Las fechas ingenuas se interpretan
+    como UTC, igual que la consulta SQL del repositorio.
+    """
+    if ahora.tzinfo is None:
+        ahora = ahora.replace(tzinfo=timezone.utc)
+    if asignacion.revocada_en is not None:
+        return False
+    if asignacion.vence_en is None:
+        return True
+    vence = asignacion.vence_en
+    if vence.tzinfo is None:
+        vence = vence.replace(tzinfo=timezone.utc)
+    return vence > ahora
+
+
 def obtener_roles_vigentes(
     asignaciones: Sequence[AsignacionRol],
     ahora: datetime | None = None,
 ) -> list[str]:
     """
-    Filtra los roles vigentes en el instante dado (RN-04, D11):
-    revocada_en IS NULL y (vence_en IS NULL o vence_en > ahora).
+    Filtra los roles vigentes en el instante dado (RN-04, D11).
+
+    Delega el cálculo en `es_asignacion_vigente` para no duplicar la regla.
     """
     instante = ahora or datetime.now(timezone.utc)
-    if instante.tzinfo is None:
-        instante = instante.replace(tzinfo=timezone.utc)
-
-    roles = []
-    for asig in asignaciones:
-        if asig.revocada_en is not None:
-            continue
-        if asig.vence_en is not None:
-            vence = asig.vence_en
-            if vence.tzinfo is None:
-                vence = vence.replace(tzinfo=timezone.utc)
-            if vence <= instante:
-                continue
-        roles.append(asig.rol)
-    return roles
+    return [
+        asignacion.rol
+        for asignacion in asignaciones
+        if es_asignacion_vigente(asignacion, instante)
+    ]
 
 
 async def iniciar_sesion(

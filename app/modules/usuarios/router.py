@@ -5,7 +5,12 @@ from fastapi import APIRouter, Depends, Request, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_session
-from app.core.dependencies import SesionActual, get_roles_vigentes, obtener_usuario_actual
+from app.core.dependencies import (
+    SesionActual,
+    get_roles_vigentes,
+    obtener_usuario_actual,
+    require_roles,
+)
 from app.core.seguridad import (
     construir_cookie_sesion,
     construir_cookie_borrado,
@@ -13,13 +18,19 @@ from app.core.seguridad import (
 )
 from app.modules.usuarios.models import Usuario
 from app.modules.usuarios.repository import (
+    obtener_sesion_admin_usuarios,
     obtener_sesion_auditoria,
     obtener_sesion_cambio_password,
 )
 from app.modules.usuarios.schemas import (
+    AsignacionRolPublica,
+    HistorialRoles,
     SolicitudLogin,
     RespuestaSesion,
     RespuestaLogout,
+    SolicitudAltaUsuario,
+    SolicitudAsignacionRol,
+    UsuarioCreado,
     UsuarioPublico,
     TokenInfo,
     SolicitudCambioPassword,
@@ -29,11 +40,31 @@ from app.modules.usuarios.service import (
     iniciar_sesion,
     auditar_acceso,
     RegistroAcceso,
+    asignar_rol,
     cambiar_password as cambiar_password_service,
+    dar_de_alta_usuario,
+    obtener_historial_roles,
 )
 
 router_publico = APIRouter(prefix="/auth", tags=["Autenticación"])
 router_autenticado = APIRouter(prefix="/auth", tags=["Autenticación"])
+
+# D1: una sola instancia por proceso. FastAPI cachea por identidad del callable,
+# así que la guarda del router y el parámetro del handler comparten ejecución y
+# una única consulta a `asignacion_rol` por petición.
+solo_admin = require_roles("ADMIN")
+
+router_admin_usuarios = APIRouter(
+    prefix="/usuarios",
+    tags=["Administración de usuarios"],
+    dependencies=[Depends(solo_admin)],
+)
+router_admin_eventos = APIRouter(
+    prefix="/eventos",
+    tags=["Auditoría"],
+    dependencies=[Depends(solo_admin)],
+)
+
 
 
 @router_publico.post("/login", response_model=RespuestaSesion)
@@ -155,3 +186,98 @@ async def obtener_sesion_yo(
             exp=sesion_actual.exp,
         ),
     )
+
+
+# ---------------------------------------------------------------------------
+# Administración de usuarios y roles (C-12)
+# ---------------------------------------------------------------------------
+
+
+@router_admin_usuarios.post("", status_code=201, response_model=UsuarioCreado)
+async def alta_usuario(
+    solicitud: SolicitudAltaUsuario,
+    request: Request,
+    sesion_actual: Annotated[SesionActual, Depends(solo_admin)],
+    sesion_admin: Annotated[AsyncSession, Depends(obtener_sesion_admin_usuarios)],
+    sesion_auditoria: Annotated[AsyncSession, Depends(obtener_sesion_auditoria)],
+) -> UsuarioCreado:
+    """
+    Alta de personal (D3, D4).
+
+    Responde `201` con `UsuarioCreado`; `409 EMAIL_DUPLICADO` si el email ya
+    existe; `422 ERROR_VALIDACION` si el contrato no cumple.
+    """
+    ip = request.client.host if request.client else "desconocida"
+    return await dar_de_alta_usuario(
+        solicitud=solicitud,
+        admin=sesion_actual.usuario,
+        ip=ip,
+        sesion_admin=sesion_admin,
+        sesion_auditoria=sesion_auditoria,
+        app_state=request.app.state,
+    )
+
+
+@router_admin_usuarios.get("/{usuario_id}/roles", response_model=HistorialRoles)
+async def consultar_roles_usuario(
+    usuario_id: int,
+    sesion_actual: Annotated[SesionActual, Depends(solo_admin)],
+    sesion: Annotated[AsyncSession, Depends(get_session)],
+) -> HistorialRoles:
+    """
+    Historial de asignaciones del usuario (D5).
+
+    Devuelve vigentes y revocadas ordenadas por `desde` descendente; `404
+    USUARIO_NO_ENCONTRADO` si el `id` no existe.
+    """
+    return await obtener_historial_roles(sesion, usuario_id)
+
+
+@router_admin_usuarios.post("/{usuario_id}/roles", status_code=201, response_model=AsignacionRolPublica)
+async def asignar_rol_usuario(
+    usuario_id: int,
+    solicitud: SolicitudAsignacionRol,
+    request: Request,
+    sesion_actual: Annotated[SesionActual, Depends(solo_admin)],
+    sesion_admin: Annotated[AsyncSession, Depends(obtener_sesion_admin_usuarios)],
+    sesion_auditoria: Annotated[AsyncSession, Depends(obtener_sesion_auditoria)],
+) -> AsignacionRolPublica:
+    """
+    Asignación de rol con vencimiento opcional (D6).
+
+    `201` con la asignación creada; `404 USUARIO_NO_ENCONTRADO`; `409
+    ROL_YA_ASIGNADO` (RN-03); `422 ERROR_VALIDACION` si el rol o el vencimiento
+    no son válidos.
+    """
+    ip = request.client.host if request.client else "desconocida"
+    return await asignar_rol(
+        usuario_id=usuario_id,
+        solicitud=solicitud,
+        admin=sesion_actual.usuario,
+        ip=ip,
+        sesion_admin=sesion_admin,
+        sesion_auditoria=sesion_auditoria,
+    )
+
+
+@router_admin_usuarios.delete("/{usuario_id}/roles/{rol}")
+async def revocar_rol_usuario(
+    usuario_id: int,
+    rol: str,
+    request: Request,
+    sesion_actual: Annotated[SesionActual, Depends(solo_admin)],
+    sesion_admin: Annotated[AsyncSession, Depends(obtener_sesion_admin_usuarios)],
+    sesion_auditoria: Annotated[AsyncSession, Depends(obtener_sesion_auditoria)],
+) -> dict[str, str]:
+    """Revocación lógica de un rol (D7)."""
+    raise NotImplementedError
+
+
+@router_admin_eventos.get("")
+async def listar_eventos_auditoria(
+    request: Request,
+    sesion_actual: Annotated[SesionActual, Depends(solo_admin)],
+    sesion: Annotated[AsyncSession, Depends(get_session)],
+) -> dict[str, str]:
+    """Auditoría paginada de eventos de seguridad (D8)."""
+    raise NotImplementedError

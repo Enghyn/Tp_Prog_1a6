@@ -31,6 +31,8 @@ router_protegido = APIRouter(dependencies=[Depends(requiere_password_actualizada
 router_publico.include_router(health_router.router)
 router_publico.include_router(usuarios_router.router_publico)
 router_protegido.include_router(usuarios_router.router_autenticado)
+router_protegido.include_router(usuarios_router.router_admin_usuarios)
+router_protegido.include_router(usuarios_router.router_admin_eventos)
 
 
 @asynccontextmanager
