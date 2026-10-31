@@ -1,5 +1,13 @@
 # API Taller Mecánico
 
+## Integrantes (Comision 4)
+
+- Enzo Giaquinta
+- Agustin Contardi
+- Fernando Torrez
+- Ramiro Salcedo
+- Ignacio Sanchez
+
 API REST para la gestión de un taller mecánico desarrollada con FastAPI, SQLModel y PostgreSQL.
 
 ## Tecnologías
