@@ -32,7 +32,7 @@ async def obtener_sesion_cambio_password(
     `async with sesion.begin()` sobre ella. Esta sesión no comparte identidad
     ni transacción con la del request.
 
-    TODO(C-14): reemplazar este límite transaccional local por el UnitOfWork.
+    C-14: el límite transaccional lo administra el UnitOfWork.
     """
     maker = getattr(request.app.state, "session_maker", None) or session_maker
     async with maker() as sesion:
@@ -49,7 +49,7 @@ async def obtener_sesion_admin_usuarios(
     una transacción autobegin abierta por la autorización (`require_roles`), por
     lo que el service no puede abrir `async with sesion.begin()` sobre ella.
 
-    TODO(C-14): reemplazar este límite transaccional local por el UnitOfWork.
+    C-14: el límite transaccional lo administra el UnitOfWork.
     """
     maker = getattr(request.app.state, "session_maker", None) or session_maker
     async with maker() as sesion:

@@ -391,7 +391,7 @@ Paso │ Agente A (Core / Persistencia) │ Agente B (Seguridad)         │ Age
 ---
 
 ### [C-14] `unit-of-work`
-- **Estado**: `[ ]` pendiente
+- **Estado**: `[x]` completado
 - **Scope**: Unidad de trabajo asincrónica que agrupa repositorios sobre una única sesión
   - `app/core/unit_of_work.py`: `UnitOfWork` como gestor de contexto asincrónico; expone repositorios como propiedades; `__aexit__` → `commit()` si no hubo excepción, `rollback()` si la hubo; **no cierra** la sesión (la creó `get_session`)
   - `get_uow()` dependency: un UoW por request construido sobre la sesión inyectada

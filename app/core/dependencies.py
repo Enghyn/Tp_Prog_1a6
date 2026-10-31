@@ -6,6 +6,7 @@ from fastapi import Depends, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_session
+from app.core.unit_of_work import UnitOfWork
 from app.core.errors import NoAutenticadoError, ProhibidoError
 from app.core.seguridad import decodificar_token_acceso
 from app.modules.clientes.repository import (
@@ -16,6 +17,10 @@ from app.modules.ordenes.repository import (
 )
 from app.modules.usuarios.models import ROLES_VALIDOS, Usuario
 from app.modules.usuarios.repository import obtener_roles_vigentes_por_usuario
+
+
+async def get_uow(sesion: AsyncSession = Depends(get_session)) -> UnitOfWork:
+    return UnitOfWork(sesion)
 
 
 @dataclass(frozen=True)

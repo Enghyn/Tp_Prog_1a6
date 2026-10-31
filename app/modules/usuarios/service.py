@@ -5,6 +5,8 @@ import math
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.unit_of_work import UnitOfWork
+
 from app.core.configuracion import configuracion
 from app.core.errors import (
     ConflictoError,
@@ -140,8 +142,7 @@ async def cambiar_password(
     nuevo_hash = await hash_password(password_nueva, app_state)
     ahora = _ahora()
 
-    # TODO(C-14): reemplazar este límite transaccional local por UnitOfWork.__aexit__.
-    async with sesion_cambio.begin():
+    async with UnitOfWork(sesion_cambio):
         await actualizar_password(
             sesion_cambio,
             usuario_id=usuario.id,
@@ -212,8 +213,7 @@ async def dar_de_alta_usuario(
     password_hash = await hash_password(solicitud.password, app_state)
     ahora = _ahora()
 
-    # TODO(C-14): reemplazar este límite transaccional local por UnitOfWork.__aexit__.
-    async with sesion_admin.begin():
+    async with UnitOfWork(sesion_admin):
         if await buscar_usuario_por_email(sesion_admin, email) is not None:
             raise ConflictoError("El email ya está registrado", "EMAIL_DUPLICADO")
         usuario = await crear_usuario(
@@ -275,8 +275,7 @@ async def asignar_rol(
     """
     ahora = _ahora()
 
-    # TODO(C-14): reemplazar este límite transaccional local por UnitOfWork.__aexit__.
-    async with sesion_admin.begin():
+    async with UnitOfWork(sesion_admin):
         usuario = await sesion_admin.get(Usuario, usuario_id)
         if usuario is None:
             raise NoEncontradoError("Usuario no encontrado", "USUARIO_NO_ENCONTRADO")
@@ -322,7 +321,7 @@ async def revocar_rol(
     ip: str,
 ) -> RespuestaRevocacionRol:
     ahora = _ahora()
-    async with sesion_admin.begin():
+    async with UnitOfWork(sesion_admin):
         usuario = await sesion_admin.get(Usuario, usuario_id)
         if usuario is None:
             raise NoEncontradoError("Usuario no encontrado", "USUARIO_NO_ENCONTRADO")

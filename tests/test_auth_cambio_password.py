@@ -447,7 +447,7 @@ async def test_cambiar_password_exitoso_actualiza_hash_timestamp_y_bandera() -> 
     assert bcrypt.checkpw(NUEVA.encode("utf-8"), parametros["password_hash"].encode("utf-8"))
     assert parametros["password_cambiada_en"] == instante
     assert parametros["debe_cambiar_password"] is False
-    assert sesion.commit_llamado is False
+    assert sesion.commit_llamado is True
     assert sesion.transacciones_abiertas == 0
 
 
