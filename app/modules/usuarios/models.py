@@ -12,7 +12,7 @@ class Usuario(SQLModel, table=True):
     __tablename__ = "usuario"
 
     id: Optional[int] = Field(default=None, primary_key=True)
-    email: str = Field(index=True, unique=True, nullable=False)
+    email: str = Field(unique=True, nullable=False)
     nombre: str = Field(nullable=False)
     password_hash: str = Field(nullable=False)
     activo: bool = Field(default=True, nullable=False)
@@ -86,6 +86,10 @@ class EventoSeguridad(SQLModel, table=True):
     __tablename__ = "evento_seguridad"
 
     id: Optional[int] = Field(default=None, primary_key=True)
-    cuando: datetime = Field(nullable=False, sa_column_kwargs={"server_default": func.now()})
+    cuando: datetime = Field(
+        nullable=False,
+        sa_type=DateTime(timezone=True),
+        sa_column_kwargs={"server_default": func.now()},
+    )
     actor: str = Field(nullable=False)
     accion: str = Field(nullable=False)

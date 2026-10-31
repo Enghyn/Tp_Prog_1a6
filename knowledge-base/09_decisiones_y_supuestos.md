@@ -10,3 +10,5 @@
    - Todas las operaciones con `bcrypt` se ejecutan fuera del bucle de eventos principal utilizando `asyncio.to_thread` protegido por un semáforo, evitando bloqueos del servidor ASGI y limitando la carga concurrente de hashing intensivo.
 5. **Aislamiento de Escrituras de Auditoría (`intento_acceso`)**:
    - Los intentos de login se registran en su propia sesión y transacción independiente que se confirma siempre, incluso si la validación del login falla, garantizando que el intento fallido quede persistido para el conteo de seguridad (RN-08).
+6. **Revisiones de Alembic aplicadas inmutables**:
+   - Una revisión ya aplicada no se edita: cualquier cambio de esquema futuro debe expresarse en una revisión nueva (`004+`) con su `downgrade`. La causa raíz del drift de timestamps fue editar `001`/`002` después de aplicarlas; la base de desarrollo vacía se reconstruyó para recuperar la paridad, sin crear una revisión `004`.
