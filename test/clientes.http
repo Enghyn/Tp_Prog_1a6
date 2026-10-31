@@ -1,0 +1,82 @@
+@host = http://localhost:8000
+@adminEmail = admin@taller.local
+@adminPassword = Admin123!
+
+### 0. Login admin
+# @name loginAdmin
+POST {{host}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "{{adminEmail}}",
+  "password": "{{adminPassword}}"
+}
+
+### 1. Alta cliente: 201
+POST {{host}}/clientes
+Content-Type: application/json
+
+{
+  "nombre": "Juan",
+  "documento": "DOC-HTTP-1",
+  "telefono": "123"
+}
+
+### 2. Documento duplicado: 409
+POST {{host}}/clientes
+Content-Type: application/json
+
+{
+  "nombre": "Otro",
+  "documento": "DOC-HTTP-1",
+  "telefono": "456"
+}
+
+### 3. Campo extra: 422
+POST {{host}}/clientes
+Content-Type: application/json
+
+{
+  "nombre": "Extra",
+  "documento": "DOC-HTTP-X",
+  "telefono": "1",
+  "campo_extra": "x"
+}
+
+### 4. Detalle cliente: 200
+GET {{host}}/clientes/1
+
+### 5. Cliente inexistente: 404
+GET {{host}}/clientes/999999
+
+### 6. Alta vehiculo: 201
+POST {{host}}/clientes/1/vehiculos
+Content-Type: application/json
+
+{
+  "patente": "PAT-HTTP-1",
+  "marca": "Ford",
+  "modelo": "Fiesta",
+  "anio": 2020
+}
+
+### 7. Patente duplicada: 409
+POST {{host}}/clientes/1/vehiculos
+Content-Type: application/json
+
+{
+  "patente": "PAT-HTTP-1",
+  "marca": "Ford",
+  "modelo": "Fiesta",
+  "anio": 2020
+}
+
+### 8. Baja vehiculo: 204
+DELETE {{host}}/vehiculos/1
+
+### 9. Baja inexistente: 404
+DELETE {{host}}/vehiculos/999999
+
+### 10. Mis vehiculos (requiere rol CLIENTE): 200
+GET {{host}}/mis-vehiculos
+EOF

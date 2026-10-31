@@ -279,3 +279,16 @@ async def test_asignacion_invalida_devuelve_422_sin_crear_filas(
     assert respuesta.status_code == 422
     assert respuesta.json()["codigo"] == "ERROR_VALIDACION"
     assert await contexto_auth.scalar(select(func.count(AsignacionRol.id))) == total_antes
+
+# ---------------------------------------------------------------------------
+# RN-05: autoproccion del ultimo administrador
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_revocar_propio_rol_admin_devuelve_409(contexto_auth):
+    admin, token = await crear_admin_prueba(contexto_auth)
+    await contexto_auth.flush()
+    async with cliente_http(token) as c:
+        r = await c.delete(f"/usuarios/{admin.id}/roles/ADMIN")
+        assert r.status_code == 409

@@ -207,6 +207,19 @@ async def test_post_orden_repuesto_inexistente_404(contexto_auth):
 
 @pytest.mark.asyncio
 async def test_post_orden_catalogo_vacio_409(contexto_auth):
+    from sqlalchemy import delete, text
+    from app.modules.ordenes.models import EstadoOrden, OrdenTrabajo, ItemOrden, HistorialEstadoOrden
+    from app.modules.repuestos.models import MovimientoStock
+    await contexto_auth.execute(text("ALTER TABLE historial_estado_orden DISABLE TRIGGER ALL"))
+    await contexto_auth.execute(text("ALTER TABLE movimiento_stock DISABLE TRIGGER ALL"))
+    await contexto_auth.execute(delete(ItemOrden))
+    await contexto_auth.execute(delete(HistorialEstadoOrden))
+    await contexto_auth.execute(delete(MovimientoStock))
+    await contexto_auth.execute(delete(OrdenTrabajo))
+    await contexto_auth.execute(delete(EstadoOrden))
+    await contexto_auth.flush()
+    await contexto_auth.execute(text("ALTER TABLE historial_estado_orden ENABLE TRIGGER ALL"))
+    await contexto_auth.execute(text("ALTER TABLE movimiento_stock ENABLE TRIGGER ALL"))
     # no seed estados
     admin, token = await crear_admin_prueba(contexto_auth)
     usuario, cliente, vehiculo = await _crear_cliente_usuario(
@@ -286,6 +299,18 @@ async def test_post_orden_historial_desde_null(contexto_auth):
 
 @pytest.mark.asyncio
 async def test_get_ordenes_paginacion_y_filtro(contexto_auth):
+    from sqlalchemy import delete, text
+    from app.modules.ordenes.models import ItemOrden, OrdenTrabajo, HistorialEstadoOrden
+    from app.modules.repuestos.models import MovimientoStock
+    await contexto_auth.execute(text("ALTER TABLE historial_estado_orden DISABLE TRIGGER ALL"))
+    await contexto_auth.execute(text("ALTER TABLE movimiento_stock DISABLE TRIGGER ALL"))
+    await contexto_auth.execute(delete(ItemOrden))
+    await contexto_auth.execute(delete(HistorialEstadoOrden))
+    await contexto_auth.execute(delete(MovimientoStock))
+    await contexto_auth.execute(delete(OrdenTrabajo))
+    await contexto_auth.flush()
+    await contexto_auth.execute(text("ALTER TABLE historial_estado_orden ENABLE TRIGGER ALL"))
+    await contexto_auth.execute(text("ALTER TABLE movimiento_stock ENABLE TRIGGER ALL"))
     await _seed_estados(contexto_auth)
     admin, token = await crear_admin_prueba(contexto_auth)
     usuario, cliente, vehiculo = await _crear_cliente_usuario(

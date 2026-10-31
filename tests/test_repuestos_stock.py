@@ -17,8 +17,27 @@ async def _mecanico_token(sesion):
 
 @pytest.mark.asyncio
 async def test_listar_repuestos_paginado(contexto_auth):
+    from sqlalchemy import delete, text
+    from app.modules.repuestos.models import HistorialPrecioRepuesto, MovimientoStock, Repuesto
+    from app.modules.ordenes.models import ItemOrden, OrdenTrabajo
+    await contexto_auth.execute(delete(ItemOrden))
+    await contexto_auth.execute(text("ALTER TABLE movimiento_stock DISABLE TRIGGER ALL"))
+    await contexto_auth.execute(text("ALTER TABLE historial_precio_repuesto DISABLE TRIGGER ALL"))
+    await contexto_auth.execute(text("ALTER TABLE historial_estado_orden DISABLE TRIGGER ALL"))
+    await contexto_auth.execute(delete(MovimientoStock))
+    await contexto_auth.execute(delete(HistorialPrecioRepuesto))
+    from app.modules.ordenes.models import HistorialEstadoOrden
+    await contexto_auth.execute(delete(HistorialEstadoOrden))
+    await contexto_auth.execute(delete(OrdenTrabajo))
+    await contexto_auth.execute(delete(Repuesto))
+    await contexto_auth.flush()
+    await contexto_auth.execute(text("ALTER TABLE movimiento_stock ENABLE TRIGGER ALL"))
+    await contexto_auth.execute(text("ALTER TABLE historial_precio_repuesto ENABLE TRIGGER ALL"))
+    await contexto_auth.execute(text("ALTER TABLE historial_estado_orden ENABLE TRIGGER ALL"))
     admin, token = await crear_admin_prueba(contexto_auth)
     async with cliente_http(token) as c:
+        r0 = await c.get("/repuestos", params={"page": 1, "size": 1})
+        inicial = r0.json()["total"]
         for i in range(3):
             await c.post("/repuestos", json={
                 "codigo": f"R{i}", "descripcion": f"Repuesto numero {i}", "precio": "10.50", "stock": 1
@@ -26,21 +45,38 @@ async def test_listar_repuestos_paginado(contexto_auth):
         r = await c.get("/repuestos", params={"page": 1, "size": 2})
         assert r.status_code == 200
         data = r.json()
-        assert data["total"] == 3
+        assert data["total"] == inicial + 3
         assert len(data["items"]) == 2
 
 
 @pytest.mark.asyncio
 async def test_busqueda_ilike_descripcion(contexto_auth):
+    from sqlalchemy import delete, text
+    from app.modules.repuestos.models import HistorialPrecioRepuesto, MovimientoStock, Repuesto
+    from app.modules.ordenes.models import ItemOrden, OrdenTrabajo
+    await contexto_auth.execute(delete(ItemOrden))
+    await contexto_auth.execute(text("ALTER TABLE movimiento_stock DISABLE TRIGGER ALL"))
+    await contexto_auth.execute(text("ALTER TABLE historial_precio_repuesto DISABLE TRIGGER ALL"))
+    await contexto_auth.execute(text("ALTER TABLE historial_estado_orden DISABLE TRIGGER ALL"))
+    await contexto_auth.execute(delete(MovimientoStock))
+    await contexto_auth.execute(delete(HistorialPrecioRepuesto))
+    from app.modules.ordenes.models import HistorialEstadoOrden
+    await contexto_auth.execute(delete(HistorialEstadoOrden))
+    await contexto_auth.execute(delete(OrdenTrabajo))
+    await contexto_auth.execute(delete(Repuesto))
+    await contexto_auth.flush()
+    await contexto_auth.execute(text("ALTER TABLE movimiento_stock ENABLE TRIGGER ALL"))
+    await contexto_auth.execute(text("ALTER TABLE historial_precio_repuesto ENABLE TRIGGER ALL"))
+    await contexto_auth.execute(text("ALTER TABLE historial_estado_orden ENABLE TRIGGER ALL"))
     admin, token = await crear_admin_prueba(contexto_auth)
     async with cliente_http(token) as c:
-        await c.post("/repuestos", json={"codigo": "A1", "descripcion": "Filtro de aceite", "precio": "5.00", "stock": 0})
+        await c.post("/repuestos", json={"codigo": "A1", "descripcion": "ZZUNIQUE", "precio": "5.00", "stock": 0})
         await c.post("/repuestos", json={"codigo": "A2", "descripcion": "Pastilla de freno", "precio": "8.00", "stock": 0})
-        r = await c.get("/repuestos", params={"q": "aceite"})
+        r = await c.get("/repuestos", params={"q": "ZZUNIQUE"})
         assert r.status_code == 200
         data = r.json()
         assert data["total"] == 1
-        assert data["items"][0]["descripcion"] == "Filtro de aceite"
+        assert data["items"][0]["descripcion"] == "ZZUNIQUE"
 
 
 @pytest.mark.asyncio

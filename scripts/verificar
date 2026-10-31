@@ -1,0 +1,72 @@
+#!/usr/bin/env python3
+"""Script operativo de verificacion: lint (opcional) + pytest + alembic check + RN-15."""
+
+import argparse
+import os
+import shutil
+import subprocess
+import sys
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parent.parent
+
+
+def run(cmd, **kwargs):
+    print(f"$ {' '.join(str(c) for c in cmd)}")
+    return subprocess.run(cmd, cwd=str(ROOT), **kwargs)
+
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--reset", action="store_true", help="Recrea el esquema con seed.py --reset --si antes de los tests")
+    args = parser.parse_args()
+
+    if args.reset:
+        r = run([sys.executable, "seed.py", "--reset", "--si"])
+        if r.returncode != 0:
+            print("ERROR: seed --reset fallo")
+            return r.returncode
+
+    # Lint opcional
+    if shutil.which("ruff"):
+        r = run(["ruff", "check", "."])
+        if r.returncode != 0:
+            print("WARNING: ruff check reporto problemas (no bloqueante)")
+    else:
+        print("lint skipped (ruff not installed)")
+
+    # Tests (incluye smoke). Warnings de sesion abierta se convierten en error.
+    r = run([
+        sys.executable, "-m", "pytest", "-q",
+        "-W", "error",
+        "-W", "ignore::jwt.InsecureKeyLengthWarning",
+    ])
+    if r.returncode != 0:
+        print("ERROR: pytest fallo")
+        return r.returncode
+
+    # Alembic check
+    r = run([sys.executable, "-m", "alembic", "check"])
+    if r.returncode != 0:
+        print("ERROR: alembic check fallo")
+        return r.returncode
+
+    # RN-15 sobre base real (si psql disponible)
+    psql = shutil.which("psql")
+    if psql:
+        db_url = os.environ.get("DATABASE_URL", "")
+        psql_url = db_url.replace("postgresql+asyncpg://", "postgresql://")
+        r = run([psql, psql_url, "-f", "scripts/verificar_solo_agregado.sql"])
+        if r.returncode != 0:
+            print("ERROR: verificacion RN-15 fallo")
+            return r.returncode
+    else:
+        print("RN-15 skipped (psql not installed)")
+
+    print("OK: verificacion completa")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
+EOF

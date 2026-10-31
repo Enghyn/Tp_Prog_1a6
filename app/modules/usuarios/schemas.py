@@ -268,7 +268,7 @@ class RespuestaRevocacionRol(BaseModel):
 class EventoPublico(BaseModel):
     """Evento de seguridad proyectado para la auditoría consultable (D8)."""
 
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="forbid", from_attributes=True)
 
     id: int
     cuando: datetime

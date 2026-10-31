@@ -1,0 +1,79 @@
+@host = http://localhost:8000
+@adminEmail = admin@taller.local
+@adminPassword = Admin123!
+
+### 0. Login admin (captura cookie access_token automaticamente)
+# @name loginAdmin
+POST {{host}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "{{adminEmail}}",
+  "password": "{{adminPassword}}"
+}
+
+### 1. Alta de personal: 201
+POST {{host}}/usuarios
+Content-Type: application/json
+
+{
+  "email": "nuevo.personal@taller.local",
+  "nombre": "Nuevo Personal",
+  "rol_inicial": "RECEPCION"
+}
+
+### 2. Alta duplicada: 409 EMAIL_DUPLICADO
+POST {{host}}/usuarios
+Content-Type: application/json
+
+{
+  "email": "nuevo.personal@taller.local",
+  "nombre": "Duplicado",
+  "rol_inicial": "RECEPCION"
+}
+
+### 3. Campo extra: 422
+POST {{host}}/usuarios
+Content-Type: application/json
+
+{
+  "email": "extra@taller.local",
+  "nombre": "Extra",
+  "rol_inicial": "RECEPCION",
+  "campo_extra": "x"
+}
+
+### 4. Consulta roles de usuario: 200
+GET {{host}}/usuarios/1/roles
+
+### 5. Usuario inexistente: 404
+GET {{host}}/usuarios/999999/roles
+
+### 6. Asignacion de rol: 201
+POST {{host}}/usuarios/2/roles
+Content-Type: application/json
+
+{
+  "rol": "MECANICO"
+}
+
+### 7. Rol ya asignado: 409 ROL_YA_ASIGNADO
+POST {{host}}/usuarios/2/roles
+Content-Type: application/json
+
+{
+  "rol": "MECANICO"
+}
+
+### 8. Revocacion de rol: 200
+DELETE {{host}}/usuarios/2/roles/MECANICO
+
+### 9. Revocacion inexistente: 404
+DELETE {{host}}/usuarios/2/roles/MECANICO
+
+### 10. Auditoria de eventos: 200
+GET {{host}}/eventos?page=1&size=10
+
+### 11. Auditoria con size invalido: 422
+GET {{host}}/eventos?page=1&size=0
+EOF

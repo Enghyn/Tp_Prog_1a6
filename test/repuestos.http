@@ -1,0 +1,95 @@
+@host = http://localhost:8000
+@adminEmail = admin@taller.local
+@adminPassword = Admin123!
+
+### 0. Login admin
+# @name loginAdmin
+POST {{host}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "{{adminEmail}}",
+  "password": "{{adminPassword}}"
+}
+
+### 1. Listado repuestos: 200
+GET {{host}}/repuestos?page=1&size=10
+
+### 2. Listado con q: 200
+GET {{host}}/repuestos?page=1&size=10&q=filtro
+
+### 3. Listado size invalido: 422
+GET {{host}}/repuestos?page=1&size=0
+
+### 4. Alta repuesto: 201
+POST {{host}}/repuestos
+Content-Type: application/json
+
+{
+  "codigo": "REP-HTTP-1",
+  "descripcion": "Filtro de aceite",
+  "precio": 100.0,
+  "stock": 5
+}
+
+### 5. Codigo duplicado: 409
+POST {{host}}/repuestos
+Content-Type: application/json
+
+{
+  "codigo": "REP-HTTP-1",
+  "descripcion": "Duplicado",
+  "precio": 100.0,
+  "stock": 5
+}
+
+### 6. Detalle repuesto: 200
+GET {{host}}/repuestos/1
+
+### 7. Detalle inexistente: 404
+GET {{host}}/repuestos/999999
+
+### 8. PATCH precio: 200
+PATCH {{host}}/repuestos/1
+Content-Type: application/json
+
+{
+  "precio": 120.0
+}
+
+### 9. PATCH sin cambios: 200
+PATCH {{host}}/repuestos/1
+Content-Type: application/json
+
+{
+  "descripcion": "Filtro de aceite"
+}
+
+### 10. Reponer stock: 200
+POST {{host}}/repuestos/1/reponer
+Content-Type: application/json
+
+{
+  "cantidad": 3
+}
+
+### 11. Reponer cantidad invalida: 422
+POST {{host}}/repuestos/1/reponer
+Content-Type: application/json
+
+{
+  "cantidad": 0
+}
+
+### 12. Movimientos: 200
+GET {{host}}/repuestos/1/movimientos
+
+### 13. Precios: 200
+GET {{host}}/repuestos/1/precios
+
+### 14. Baja repuesto: 204
+DELETE {{host}}/repuestos/1
+
+### 15. Baja inexistente: 404
+DELETE {{host}}/repuestos/999999
+EOF

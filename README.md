@@ -110,6 +110,40 @@ Content-Type: application/json
 
 > ⚠️ Estas credenciales son **solo para desarrollo local**. No deben usarse en producción ni en entornos compartidos. `mecanico@taller.local` se crea con `debe_cambiar_password = true`.
 
+## Variables de entorno
+
+| Variable | Descripcion | Ejemplo |
+|---|---|---|
+| DATABASE_URL | DSN asyncpg de la base principal | postgresql+asyncpg://postgres:postgres123@127.0.0.1:5433/taller_mecanico |
+| TEST_DATABASE_URL | DSN para la suite de tests | postgresql+asyncpg://postgres:postgres123@127.0.0.1:5433/taller_mecanico |
+| JWT_SECRET | Secreto HMAC para JWT (>= 32 bytes recomendado) | clave-secreta-de-prueba |
+
 ## Estructura del Proyecto
 
 Ver [knowledge-base/02_descripcion_general.md](knowledge-base/02_descripcion_general.md) para más detalles.
+
+## Verificacion final
+
+Variables de entorno: DATABASE_URL, TEST_DATABASE_URL, JWT_SECRET, ACCESS_TOKEN_TTL_MIN, BCRYPT_MAX_CONCURRENCY, LOGIN_MAX_INTENTOS, LOGIN_VENTANA_SEG, ENTORNO, COOKIE_SECURE (opcional).
+
+Migracion y seed:
+    alembic upgrade head
+    python seed.py
+    python seed.py --reset --si
+
+Verificacion RN-15:
+    psql "$DATABASE_URL" -f scripts/verificar_solo_agregado.sql
+
+Pruebas:
+    pytest
+    pytest -m smoke
+
+Verificacion operativa:
+    python scripts/verificar
+    python scripts/verificar --reset
+    scripts\verificar.bat
+
+Arranque:
+    uvicorn main:app --reload
+
+Credenciales de desarrollo: admin@taller.local (ADMIN, Admin123!), recepcion@taller.local (RECEPCION, Recepcion123!), mecanico@taller.local (MECANICO, Mecanico123!, debe_cambiar_password=true), cliente@taller.local (CLIENTE, Cliente123!).

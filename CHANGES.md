@@ -505,7 +505,7 @@ Paso │ Agente A (Core / Persistencia) │ Agente B (Seguridad)         │ Age
 ## FASE 6 — Integración y cierre del TP
 
 ### [C-20] `integracion-e2e`
-- **Estado**: `[ ]` pendiente
+- **Estado**: `[x]` completado
 - **Scope**: Verificación end-to-end del contrato completo y guía de ejecución
   - `test/*.http` por módulo (`health`, `auth`, `usuarios`, `clientes`, `repuestos`, `ordenes`) con variables de entorno, cookie `access_token` y casos felices + errores declarados
   - Suite pytest de contrato: cada endpoint de `06_funcionalidades.md` responde el código esperado, y cada regla RN-01…RN-20 tiene al menos un test que la ejerce

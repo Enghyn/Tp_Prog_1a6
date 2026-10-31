@@ -61,7 +61,7 @@ async def test_vehiculo_anio_valido(test_db_session):
 
     v = Vehiculo(
         cliente_id=c.id,
-        patente="AB123CD",
+        patente="ZZ999ZZ",
         marca="Renault",
         modelo="Clio",
         anio=2010,
@@ -280,11 +280,11 @@ async def test_item_orden_duplicado_rechazado(test_db_session):
     session.add(r)
     await session.flush()
 
-    est = EstadoOrden(codigo="PENDIENTE", descripcion="Pendiente", posicion=1, es_final=False)
+    est = EstadoOrden(codigo="PENDIENTE_ITEMDUP", descripcion="Pendiente", posicion=999, es_final=False)
     session.add(est)
     await session.flush()
 
-    o = OrdenTrabajo(vehiculo_id=v.id, estado="PENDIENTE", falla="Test", creada_en=datetime.now(timezone.utc), total=Decimal("0"))
+    o = OrdenTrabajo(vehiculo_id=v.id, estado="PENDIENTE_ITEMDUP", falla="Test", creada_en=datetime.now(timezone.utc), total=Decimal("0"))
     session.add(o)
     await session.flush()
 
