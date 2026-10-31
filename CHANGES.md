@@ -427,7 +427,7 @@ Paso │ Agente A (Core / Persistencia) │ Agente B (Seguridad)         │ Age
 ---
 
 ### [C-16] `repuestos-stock`
-- **Estado**: `[ ]` pendiente
+- **Estado**: `[x]` completado
 - **Scope**: Catálogo de repuestos con stock gobernado exclusivamente por movimientos
   - `app/modules/repuestos/`: `RepuestoRepository(SoftDeleteRepository)`, `MovimientoStockRepository`, `HistorialPrecioRepuestoRepository`, uow, service, router
   - Endpoints: `GET /repuestos` (`q`, `page`, `size`), `GET /repuestos/{id}`, `POST /repuestos` (ADMIN, stock inicial + `movimiento_stock ALTA` en el mismo UoW), `PATCH /repuestos/{id}` (descripción y/o precio), `DELETE /repuestos/{id}` (`204`, lógico), `POST /repuestos/{id}/reponer`, `GET /repuestos/{id}/movimientos`, `GET /repuestos/{id}/precios`
