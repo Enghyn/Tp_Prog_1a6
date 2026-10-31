@@ -1,6 +1,9 @@
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from sqlalchemy import exists, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.repository import BaseRepository, SoftDeleteRepository
 from app.modules.clientes.models import Cliente, Vehiculo
 
 
@@ -9,14 +12,6 @@ async def es_duenio_de_vehiculo(
     usuario_id: int,
     vehiculo_id: int,
 ) -> bool:
-    """
-    Indica si el vehículo pertenece a la ficha de cliente vinculada al usuario.
-
-    Usa un `EXISTS` con join `vehiculo -> cliente` (D6): no materializa
-    entidades ni navega relaciones `lazy="raise"`. No filtra `borrado_en`
-    porque la propiedad es histórica: un vehículo dado de baja sigue
-    perteneciendo a su cliente para consultar el historial.
-    """
     stmt = select(
         exists(
             select(Vehiculo.id)
@@ -29,3 +24,13 @@ async def es_duenio_de_vehiculo(
     )
     resultado = await sesion.execute(stmt)
     return bool(resultado.scalar())
+
+
+class ClienteRepository(BaseRepository[Cliente]):
+    def __init__(self, session: AsyncSession) -> None:
+        super().__init__(session, Cliente)
+
+
+class VehiculoRepository(SoftDeleteRepository[Vehiculo]):
+    def __init__(self, session: AsyncSession) -> None:
+        super().__init__(session, Vehiculo)

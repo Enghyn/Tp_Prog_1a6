@@ -409,7 +409,7 @@ Paso │ Agente A (Core / Persistencia) │ Agente B (Seguridad)         │ Age
 ---
 
 ### [C-15] `clientes-vehiculos`
-- **Estado**: `[ ]` pendiente
+- **Estado**: `[x]` completado
 - **Scope**: Módulo de clientes y vehículos con borrado lógico y control de propiedad
   - `app/modules/clientes/`: `schemas.py`, `repository.py` (`ClienteRepository`, `VehiculoRepository(SoftDeleteRepository)`), `unit_of_work.py`, `service.py`, `router.py`
   - Endpoints: `POST /clientes` (RECEPCION, ADMIN), `GET /clientes/{id}` con vehículos precargados, `POST /clientes/{id}/vehiculos`, `DELETE /vehiculos/{id}` → `204`, `GET /mis-vehiculos`

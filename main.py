@@ -9,6 +9,7 @@ from sqlalchemy.exc import IntegrityError
 
 from app.modules.health import router as health_router
 from app.modules.usuarios import router as usuarios_router
+from app.modules import clientes as clientes_router
 from app.core.dependencies import requiere_password_actualizada
 from app.core.errors import ErrorAplicacion, DemasiadasPeticionesError
 from app.core.seguridad import generar_hash_ficticio
@@ -33,6 +34,7 @@ router_publico.include_router(usuarios_router.router_publico)
 router_protegido.include_router(usuarios_router.router_autenticado)
 router_protegido.include_router(usuarios_router.router_admin_usuarios)
 router_protegido.include_router(usuarios_router.router_admin_eventos)
+router_protegido.include_router(clientes_router.router_autenticado)
 
 
 @asynccontextmanager
