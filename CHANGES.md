@@ -350,7 +350,7 @@ Paso │ Agente A (Core / Persistencia) │ Agente B (Seguridad)         │ Age
 ---
 
 ### [C-12] `admin-usuarios-roles`
-- **Estado**: `[ ]` pendiente
+- **Estado**: `[x]` completado
 - **Scope**: Gestión de personal, asignación/revocación de roles y auditoría (sólo ADMIN)
   - `POST /usuarios`: alta de personal con contraseña provisoria (`debe_cambiar_password=True`), 409 email duplicado, 422 contrato
   - `GET /usuarios/{id}/roles`: historial de asignaciones (vigentes y revocadas), 404 inexistente

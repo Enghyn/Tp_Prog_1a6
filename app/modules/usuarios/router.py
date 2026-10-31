@@ -1,7 +1,7 @@
 from datetime import datetime, timezone
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Request, Response
+from fastapi import APIRouter, Depends, Query, Request, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_session
@@ -35,7 +35,10 @@ from app.modules.usuarios.schemas import (
     TokenInfo,
     SolicitudCambioPassword,
     RespuestaCambioPassword,
+    RespuestaRevocacionRol,
+    EventoPublico,
 )
+from app.core.paginacion import Page, PageParams
 from app.modules.usuarios.service import (
     iniciar_sesion,
     auditar_acceso,
@@ -44,6 +47,8 @@ from app.modules.usuarios.service import (
     cambiar_password as cambiar_password_service,
     dar_de_alta_usuario,
     obtener_historial_roles,
+    revocar_rol,
+    consultar_eventos,
 )
 
 router_publico = APIRouter(prefix="/auth", tags=["Autenticación"])
@@ -260,7 +265,7 @@ async def asignar_rol_usuario(
     )
 
 
-@router_admin_usuarios.delete("/{usuario_id}/roles/{rol}")
+@router_admin_usuarios.delete("/{usuario_id}/roles/{rol}", response_model=RespuestaRevocacionRol)
 async def revocar_rol_usuario(
     usuario_id: int,
     rol: str,
@@ -268,16 +273,34 @@ async def revocar_rol_usuario(
     sesion_actual: Annotated[SesionActual, Depends(solo_admin)],
     sesion_admin: Annotated[AsyncSession, Depends(obtener_sesion_admin_usuarios)],
     sesion_auditoria: Annotated[AsyncSession, Depends(obtener_sesion_auditoria)],
-) -> dict[str, str]:
-    """Revocación lógica de un rol (D7)."""
-    raise NotImplementedError
+) -> RespuestaRevocacionRol:
+    ip = request.client.host if request.client else "desconocida"
+    return await revocar_rol(
+        sesion_admin=sesion_admin,
+        sesion_auditoria=sesion_auditoria,
+        usuario_id=usuario_id,
+        rol=rol,
+        admin=sesion_actual.usuario,
+        ip=ip,
+    )
 
 
-@router_admin_eventos.get("")
+@router_admin_eventos.get("", response_model=Page[EventoPublico])
 async def listar_eventos_auditoria(
     request: Request,
     sesion_actual: Annotated[SesionActual, Depends(solo_admin)],
     sesion: Annotated[AsyncSession, Depends(get_session)],
-) -> dict[str, str]:
-    """Auditoría paginada de eventos de seguridad (D8)."""
-    raise NotImplementedError
+    page: int = Query(1, ge=1),
+    size: int = Query(10, ge=1, le=100),
+    actor: str | None = None,
+    desde: datetime | None = None,
+    hasta: datetime | None = None,
+) -> Page[EventoPublico]:
+    return await consultar_eventos(
+        sesion,
+        desde=desde,
+        hasta=hasta,
+        actor=actor,
+        pagina=page,
+        tamanio=size,
+    )

@@ -345,3 +345,49 @@ async def obtener_ultimos_fallos_ventana(
     )
     resultado = await sesion.execute(stmt)
     return resultado.scalars().all()
+
+
+# --- eventos de auditoría (C-12) ---
+
+
+async def contar_eventos(
+    sesion: AsyncSession,
+    *,
+    desde: datetime | None = None,
+    hasta: datetime | None = None,
+    actor: str | None = None,
+) -> int:
+    stmt = select(func.count(EventoSeguridad.id))
+    if actor is not None:
+        stmt = stmt.where(EventoSeguridad.actor == actor)
+    if desde is not None:
+        stmt = stmt.where(EventoSeguridad.cuando >= desde)
+    if hasta is not None:
+        stmt = stmt.where(EventoSeguridad.cuando <= hasta)
+    resultado = await sesion.execute(stmt)
+    return resultado.scalar_one() or 0
+
+
+async def listar_eventos(
+    sesion: AsyncSession,
+    *,
+    desde: datetime | None = None,
+    hasta: datetime | None = None,
+    actor: str | None = None,
+    pagina: int = 1,
+    tamanio: int = 10,
+) -> Sequence[EventoSeguridad]:
+    stmt = select(EventoSeguridad)
+    if actor is not None:
+        stmt = stmt.where(EventoSeguridad.actor == actor)
+    if desde is not None:
+        stmt = stmt.where(EventoSeguridad.cuando >= desde)
+    if hasta is not None:
+        stmt = stmt.where(EventoSeguridad.cuando <= hasta)
+    stmt = (
+        stmt.order_by(EventoSeguridad.cuando.desc(), EventoSeguridad.id.desc())
+        .offset((pagina - 1) * tamanio)
+        .limit(tamanio)
+    )
+    resultado = await sesion.execute(stmt)
+    return resultado.scalars().all()

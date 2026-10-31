@@ -11,6 +11,7 @@ from app.core.errors import (
     DemasiadasPeticionesError,
     NoAutenticadoError,
     NoEncontradoError,
+    ReglaNegocioError,
 )
 from app.core.seguridad import (
     crear_token_acceso,
@@ -32,20 +33,25 @@ from app.modules.usuarios.repository import (
     crear_asignacion,
     crear_usuario,
     listar_asignaciones,
+    contar_eventos,
+    listar_eventos,
 )
 from app.modules.usuarios.models import IntentoAcceso, AsignacionRol, Usuario
 from app.modules.usuarios.schemas import (
     AsignacionRolPublica,
     HistorialRoles,
     RespuestaCambioPassword,
+    RespuestaRevocacionRol,
     RespuestaSesion,
     SolicitudAltaUsuario,
     SolicitudAsignacionRol,
     UsuarioCreado,
     UsuarioPublico,
     TokenInfo,
+    EventoPublico,
     normalizar_email_valor,
 )
+from app.core.paginacion import Page
 
 
 @dataclass(frozen=True)
@@ -304,6 +310,63 @@ async def asignar_rol(
     )
 
     return _publicar_asignacion(asignacion, ahora)
+
+
+async def revocar_rol(
+    sesion_admin: AsyncSession,
+    sesion_auditoria: AsyncSession,
+    *,
+    usuario_id: int,
+    rol: str,
+    admin: Usuario,
+    ip: str,
+) -> RespuestaRevocacionRol:
+    ahora = _ahora()
+    async with sesion_admin.begin():
+        usuario = await sesion_admin.get(Usuario, usuario_id)
+        if usuario is None:
+            raise NoEncontradoError("Usuario no encontrado", "USUARIO_NO_ENCONTRADO")
+        asignacion = await buscar_asignacion_abierta(sesion_admin, usuario_id, rol)
+        if asignacion is None or not es_asignacion_vigente(asignacion, ahora):
+            raise NoEncontradoError("Asignación no encontrada", "ASIGNACION_NO_ENCONTRADA")
+        if rol == "ADMIN" and usuario_id == admin.id:
+            raise ConflictoError("No puede revocar su propio rol ADMIN", "AUTOPROTECCION_ADMIN")
+        if rol == "ADMIN" and await contar_admins_vigentes(sesion_admin, ahora) <= 1:
+            raise ConflictoError("No puede dejar el sistema sin administradores", "ULTIMO_ADMIN")
+        await cerrar_asignacion(sesion_admin, asignacion.id, ahora)
+
+    await _auditar_operacion(
+        sesion_auditoria,
+        email=usuario.email,
+        ip=ip,
+        actor=admin.email,
+        accion="ROL_REVOCADO",
+        cuando=ahora,
+    )
+    return RespuestaRevocacionRol()
+
+
+async def consultar_eventos(
+    sesion: AsyncSession,
+    *,
+    desde: datetime | None = None,
+    hasta: datetime | None = None,
+    actor: str | None = None,
+    pagina: int = 1,
+    tamanio: int = 10,
+) -> Page[EventoPublico]:
+    if desde is not None and hasta is not None and desde > hasta:
+        raise ReglaNegocioError("Rango de fechas inválido", "RANGO_FECHAS_INVALIDO")
+    total = await contar_eventos(sesion, desde=desde, hasta=hasta, actor=actor)
+    filas = await listar_eventos(
+        sesion, desde=desde, hasta=hasta, actor=actor, pagina=pagina, tamanio=tamanio
+    )
+    return Page(
+        items=[EventoPublico.model_validate(f) for f in filas],
+        total=total,
+        page=pagina,
+        size=tamanio,
+    )
 
 
 async def obtener_historial_roles(

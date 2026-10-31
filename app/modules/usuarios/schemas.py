@@ -193,6 +193,25 @@ class HistorialRoles(BaseModel):
     asignaciones: list[AsignacionRolPublica]
 
 
+class RespuestaRevocacionRol(BaseModel):
+    """Respuesta de revocación de rol (D7)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    detail: str = "Rol revocado"
+
+
+class EventoPublico(BaseModel):
+    """Evento de seguridad proyectado para la auditoría consultable (D8)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    id: int
+    cuando: datetime
+    actor: str
+    accion: str
+
+
 # Catálogo cerrado de roles: espejo del CHECK `ck_asignacion_rol_valido`.
 RolValido = Literal["ADMIN", "RECEPCION", "MECANICO", "CLIENTE"]
 

@@ -165,8 +165,9 @@ async def test_alta_no_devuelve_la_password_ni_el_hash(contexto_auth) -> None:
         )
 
     assert respuesta.status_code == 201
-    assert "password" not in respuesta.text
+    assert PASSWORD not in respuesta.text
     assert "$2b$" not in respuesta.text
+    assert '"password"' not in respuesta.text
 
 
 @pytest.mark.asyncio
